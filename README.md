@@ -1,198 +1,195 @@
-# Clean Document Processor
+# Application Document Processor
 
-A sophisticated four-agent document processing system designed for mortgage applications. This system orchestrates document ingestion, data extraction, validation, and formatting through specialized agents.
+A comprehensive four-agent document processing system for mortgage applications, built with FastAPI, PostgreSQL, and AWS Textract.
 
-## Architecture Overview
+## 🚀 Features
 
-The system consists of four specialized agents working in coordination:
+- **Document Ingestion Agent**: File upload, validation, and storage
+- **Data Extraction Agent**: AWS Textract integration for intelligent field extraction
+- **Data Validation Agent**: Field comparison and validation against application data
+- **Data Formatting Agent**: Final data formatting and golden record creation
 
-1. **Document Ingestion Agent** - Handles document upload, validation, and initial processing setup
-2. **Data Extraction Agent** - Extracts data using AWS Textract with intelligent field detection
-3. **Data Validation Agent** - Cross-validates extracted data against application form data
-4. **Data Formatting Agent** - Formats and stores final data in the golden table for decision engine
+## 🏗️ Architecture
 
-## Features
+The system uses a microservices architecture with four specialized agents:
 
-- **Multi-document Processing**: Handle multiple documents simultaneously
-- **Intelligent Document Classification**: Automatic document type detection
-- **AWS Textract Integration**: Advanced OCR and field extraction
-- **Data Validation**: Cross-validation between application forms and documents
-- **Conflict Resolution**: Smart resolution of data conflicts
-- **Golden Table**: Structured final data ready for decision engine
-- **Real-time Processing**: Background job processing with status tracking
-- **Comprehensive Logging**: Full audit trail of all processing steps
+1. **Document Ingestion Agent**: Handles file uploads, validation, and initial processing
+2. **Data Extraction Agent**: Uses AWS Textract to extract structured data from documents
+3. **Data Validation Agent**: Compares extracted data against application form data
+4. **Data Formatting Agent**: Creates final formatted records for decision-making
 
-## Quick Start
+## 🛠️ Technology Stack
 
-### Prerequisites
+- **Backend**: FastAPI (Python 3.11)
+- **Database**: PostgreSQL with JSONB support
+- **Cloud Services**: AWS Textract for OCR and data extraction
+- **Containerization**: Docker & Docker Compose
+- **Storage**: Local file system with S3 integration
+- **API**: RESTful API with comprehensive endpoints
 
-- Python 3.8+
-- Supabase account
-- AWS account with Textract access
-- PostgreSQL database
+## 📋 Prerequisites
 
-### Installation
+- Docker and Docker Compose
+- AWS Account with Textract access
+- Python 3.11+ (for local development)
 
-1. Clone the repository:
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+
 ```bash
-git clone <repository-url>
-cd application_document_processor
+git clone https://github.com/Iamviratian1/application_doc_processor.git
+cd application_doc_processor
 ```
 
-2. Install dependencies:
+### 2. Configure Environment
+
+Copy the environment file and update with your AWS credentials:
+
 ```bash
-pip install -r requirements.txt
+cp env.example env.docker
+# Edit env.docker with your AWS credentials
 ```
 
-3. Set up environment variables:
+### 3. Start the System
+
 ```bash
-cp env.example .env
-# Edit .env with your credentials
+docker-compose up -d
 ```
 
-4. Set up the database:
+### 4. Verify Installation
+
 ```bash
-# Run the schema creation script
-psql -d your_database -f database/schema.sql
+curl http://localhost:8000/health
 ```
 
-5. Start the application:
-```bash
-python main.py
+## 📚 API Endpoints
+
+### Core Endpoints
+
+- **`POST /api/v1/process-documents`** - Upload documents for processing
+- **`GET /api/v1/extracted-fields/{application_id}`** - Get all extracted fields
+- **`GET /api/v1/field-status/{application_id}`** - Get field status with validation
+- **`GET /api/v1/validation-results/{application_id}`** - Get validation results
+- **`GET /api/v1/golden-data/{application_id}`** - Get final formatted data
+
+### Management Endpoints
+
+- **`GET /api/v1/application/{application_id}`** - Get application details
+- **`GET /api/v1/processing-status/{application_id}`** - Get processing status
+- **`GET /api/v1/required-documents/{application_id}`** - Get required documents
+- **`GET /api/v1/missing-fields/{application_id}`** - Get missing fields
+
+## 📄 Supported Document Types
+
+- **Mortgage Application Forms** - Primary application data
+- **Driver's Licenses** - Identity verification
+- **Employment Letters** - Income verification
+- **Bank Statements** - Financial verification
+- **T4 Forms** - Tax information
+- **Utility Bills** - Address verification
+- **Marriage Certificates** - Marital status
+- **PR Cards** - Residency status
+- **Rental Agreements** - Housing information
+
+## 🔧 Configuration
+
+### Document Configuration
+
+Document types and field mappings are configured in `config/documents.yaml`:
+
+```yaml
+mortgage_application:
+  classification_keywords: ["mortgage", "application", "loan"]
+  mandatory_for_applicant: true
+  extraction_queries:
+    - query: "What is the applicant's first name?"
+      field_name: "applicant_first_name"
+      field_type: "text"
+      page: 1
 ```
 
-## Configuration
+### Validation Configuration
+
+Validation rules are defined in `config/validation_config.py`:
+
+```python
+VALIDATION_RULES = {
+    "applicant_first_name": {
+        "required": True,
+        "data_type": "text",
+        "min_length": 2,
+        "max_length": 50
+    }
+}
+```
+
+## 🧪 Testing
+
+### Test Documents
+
+Sample documents are provided in the `test_documents/` directory:
+
+- `Mortgage_Application_Form.pdf` - Sample mortgage application
+- `ontario-drivers-license.jpg` - Sample driver's license
+- `employement letter.jpg` - Sample employment letter
+- And more...
+
+### Running Tests
+
+```bash
+# Test the complete workflow
+python test_mortgage_application.py
+
+# Test individual components
+python test_local_documents.py
+```
+
+## 📊 Database Schema
+
+The system uses PostgreSQL with the following key tables:
+
+- **`applications`** - Application metadata
+- **`documents`** - Document information and metadata
+- **`extracted_data`** - Extracted field data (JSONB)
+- **`validation_results`** - Validation results and summaries
+- **`golden_data`** - Final formatted records
+- **`processing_logs`** - Processing status and logs
+- **`document_jobs`** - Job queue management
+
+## 🔍 Monitoring and Logging
+
+- **Processing Logs**: Real-time processing status
+- **Validation Results**: Field-by-field validation status
+- **Error Tracking**: Comprehensive error logging
+- **Performance Metrics**: Processing times and success rates
+
+## 🚀 Deployment
+
+### Production Deployment
+
+1. Update `env.docker` with production AWS credentials
+2. Configure database connection settings
+3. Set up proper logging and monitoring
+4. Deploy using Docker Compose or Kubernetes
 
 ### Environment Variables
 
-- `SUPABASE_URL`: Your Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
-- `AWS_ACCESS_KEY_ID`: AWS access key
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key
-- `AWS_S3_BUCKET`: S3 bucket for document storage
-- `AWS_REGION`: AWS region (default: us-east-1)
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/document_processor
 
-### Document Types Supported
+# AWS
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
 
-- Mortgage Application Forms
-- T4 Tax Forms
-- Employment Letters
-- Bank Statements
-- Pay Stubs
-- Credit Reports
-- Property Assessments
-- Insurance Documents
-
-## API Endpoints
-
-### Process Documents
-```http
-POST /api/v1/process-documents
-Content-Type: multipart/form-data
-
-files: [file1, file2, ...]
-application_id: string
-applicant_type: "applicant" | "co_applicant"
+# Application
+LOG_LEVEL=INFO
+MAX_FILE_SIZE=10485760
 ```
 
-### Get Processing Status
-```http
-GET /api/v1/processing-status/{application_id}
-```
-
-### Get Golden Data
-```http
-GET /api/v1/golden-data/{application_id}
-```
-
-### Retry Processing
-```http
-POST /api/v1/retry-processing/{application_id}
-```
-
-### System Metrics
-```http
-GET /api/v1/metrics
-```
-
-## Database Schema
-
-The system uses a comprehensive database schema with the following main tables:
-
-- `applications`: Application metadata and status
-- `documents`: Raw document storage and metadata
-- `extracted_data`: Data extracted by the extraction agent
-- `validation_results`: Validation results from the validation agent
-- `golden_data`: Final formatted data for decision engine
-- `processing_logs`: Audit trail of all processing steps
-- `document_jobs`: Job queue management
-
-## Agent Details
-
-### Document Ingestion Agent
-- File validation and type detection
-- Storage management
-- Initial document classification
-- Job queue creation
-
-### Data Extraction Agent
-- AWS Textract integration
-- Intelligent field extraction
-- Confidence scoring
-- Raw response storage
-
-### Data Validation Agent
-- Cross-validation logic
-- Mismatch detection
-- Severity assessment
-- Flagging for review
-
-### Data Formatting Agent
-- Data normalization
-- Conflict resolution
-- Golden table population
-- Quality scoring
-
-## Processing Pipeline
-
-1. **Upload**: Documents are uploaded and validated
-2. **Ingestion**: Files are stored and classified
-3. **Extraction**: Data is extracted using AWS Textract
-4. **Validation**: Extracted data is validated against application forms
-5. **Formatting**: Final data is formatted and stored in golden table
-6. **Decision Ready**: Data is ready for decision engine
-
-## Monitoring and Logging
-
-The system provides comprehensive monitoring through:
-
-- Real-time processing status
-- Detailed processing logs
-- Performance metrics
-- Error tracking and retry mechanisms
-
-## Error Handling
-
-- Automatic retry mechanisms for failed jobs
-- Comprehensive error logging
-- Graceful degradation
-- Manual intervention capabilities
-
-## Performance Considerations
-
-- Concurrent processing with configurable limits
-- Background job processing
-- Efficient database queries with proper indexing
-- Optimized AWS Textract usage
-
-## Security
-
-- Secure file storage
-- Environment variable protection
-- Input validation
-- Audit trail maintenance
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -200,10 +197,27 @@ The system provides comprehensive monitoring through:
 4. Add tests
 5. Submit a pull request
 
-## License
+## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## 🆘 Support
 
-For support and questions, please contact the development team or create an issue in the repository.
+For support and questions:
+
+- Create an issue in the GitHub repository
+- Check the documentation in the `docs/` directory
+- Review the architecture overview in `ARCHITECTURE.md`
+
+## 🎯 Roadmap
+
+- [ ] Additional document type support
+- [ ] Enhanced validation rules
+- [ ] Real-time processing dashboard
+- [ ] API rate limiting
+- [ ] Advanced error handling
+- [ ] Performance optimizations
+
+---
+
+**Built with ❤️ for efficient document processing**
