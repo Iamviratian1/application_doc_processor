@@ -18,6 +18,149 @@ The system uses a microservices architecture with four specialized agents:
 3. **Data Validation Agent**: Compares extracted data against application form data
 4. **Data Formatting Agent**: Creates final formatted records for decision-making
 
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    %% External Systems
+    Client[Client Application]
+    AWS[AWS Textract]
+    S3[AWS S3 Storage]
+    
+    %% API Layer
+    API[FastAPI Application<br/>Port 8000]
+    
+    %% Core Agents
+    subgraph "Document Processing Pipeline"
+        DIA[Document Ingestion Agent<br/>• File validation<br/>• Document classification<br/>• Storage management]
+        DEA[Data Extraction Agent<br/>• AWS Textract integration<br/>• Field extraction<br/>• Data parsing]
+        DVA[Data Validation Agent<br/>• Field comparison<br/>• Data validation<br/>• Mismatch detection]
+        DFA[Data Formatting Agent<br/>• Golden record creation<br/>• Final formatting<br/>• Quality assurance]
+    end
+    
+    %% Database
+    DB[(PostgreSQL Database<br/>• Applications<br/>• Documents<br/>• Extracted Data<br/>• Validation Results<br/>• Golden Data)]
+    
+    %% Job Queue
+    JQ[Job Queue Service<br/>• Async processing<br/>• Priority management<br/>• Error handling]
+    
+    %% Document Types
+    subgraph "Supported Document Types"
+        ID[Identity Documents<br/>• Driver's License<br/>• Passport<br/>• PR Card<br/>• Birth Certificate<br/>• Marriage Certificate]
+        FIN[Financial Documents<br/>• Bank Statements<br/>• Pay Stubs<br/>• T4 Forms<br/>• CRA NOA<br/>• Investment Statements]
+        EMP[Employment Documents<br/>• Employment Letter<br/>• Employment Contract<br/>• Employment Verification]
+        PROP[Property Documents<br/>• Purchase Agreement<br/>• Property Assessment<br/>• Property Insurance<br/>• Tax Bills]
+        CRED[Credit Documents<br/>• Credit Report<br/>• Credit Score]
+        OTHER[Other Documents<br/>• Utility Bills<br/>• Rental Agreement<br/>• Gift Letter<br/>• Legal Documents]
+    end
+    
+    %% API Endpoints
+    subgraph "API Endpoints"
+        EP1[POST /api/v1/create-application]
+        EP2[POST /api/v1/process-documents]
+        EP3[GET /api/v1/simple-missing-fields/{id}]
+        EP4[GET /api/v1/suggested-documents/{id}]
+        EP5[GET /api/v1/extracted-fields/{id}]
+        EP6[GET /api/v1/field-status/{id}]
+    end
+    
+    %% Flow Connections
+    Client --> API
+    API --> EP1
+    API --> EP2
+    API --> EP3
+    API --> EP4
+    API --> EP5
+    API --> EP6
+    
+    API --> DIA
+    DIA --> DEA
+    DEA --> DVA
+    DVA --> DFA
+    
+    DIA --> DB
+    DEA --> DB
+    DVA --> DB
+    DFA --> DB
+    
+    DEA --> AWS
+    DEA --> S3
+    
+    API --> JQ
+    JQ --> DIA
+    JQ --> DEA
+    JQ --> DVA
+    JQ --> DFA
+    
+    %% Document Processing Flow
+    DIA --> ID
+    DIA --> FIN
+    DIA --> EMP
+    DIA --> PROP
+    DIA --> CRED
+    DIA --> OTHER
+    
+    %% Styling
+    classDef agent fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef database fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef api fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef docs fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    
+    class DIA,DEA,DVA,DFA agent
+    class DB database
+    class Client,AWS,S3 external
+    class API,EP1,EP2,EP3,EP4,EP5,EP6 api
+    class ID,FIN,EMP,PROP,CRED,OTHER docs
+```
+
+### Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as FastAPI
+    participant DIA as Document Ingestion Agent
+    participant DEA as Data Extraction Agent
+    participant DVA as Data Validation Agent
+    participant DFA as Data Formatting Agent
+    participant DB as PostgreSQL
+    participant AWS as AWS Textract
+    
+    Client->>API: 1. Create Application
+    API->>DB: Store application record
+    API-->>Client: Return application_id
+    
+    Client->>API: 2. Upload Documents
+    API->>DIA: Process document upload
+    DIA->>DIA: Validate file type & size
+    DIA->>DIA: Classify document type
+    DIA->>DB: Store document metadata
+    DIA-->>API: Document ingested
+    
+    API->>DEA: 3. Extract data from documents
+    DEA->>AWS: Send document for analysis
+    AWS-->>DEA: Return extracted text & data
+    DEA->>DEA: Parse Textract response
+    DEA->>DEA: Map fields to schema
+    DEA->>DB: Store extracted fields
+    DEA-->>API: Extraction completed
+    
+    API->>DVA: 4. Validate extracted data
+    DVA->>DB: Get application form data
+    DVA->>DVA: Compare fields & detect mismatches
+    DVA->>DB: Store validation results
+    DVA-->>API: Validation completed
+    
+    API->>DFA: 5. Format final data
+    DFA->>DB: Get all processed data
+    DFA->>DFA: Create golden records
+    DFA->>DB: Store formatted data
+    DFA-->>API: Formatting completed
+    
+    API-->>Client: 6. Return processing status & results
+```
+
 ## 🛠️ Technology Stack
 
 - **Backend**: FastAPI (Python 3.11)
