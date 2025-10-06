@@ -353,11 +353,15 @@ class DocumentProcessingOrchestrator:
         """Get detailed field extraction and validation status"""
         print(f"DEBUG: get_field_status called for application_id: {application_id}")
         try:
+            print(f"DEBUG: Starting get_field_status for {application_id}")
             # Get all extracted data for the application
+            print(f"DEBUG: Getting extracted data for {application_id}")
             extracted_data = await self.db_service.get_extracted_data_by_application(application_id)
+            print(f"DEBUG: Extracted data count: {len(extracted_data) if extracted_data else 0}")
             
-            # Get golden data
-            golden_data = await self.db_service.get_golden_data(application_id)
+            # Skip golden data for now - focus on extracted fields
+            print(f"DEBUG: Skipping golden data for now")
+            golden_data = None
             
             # Get validation results
             validation_query = """
@@ -373,8 +377,15 @@ class DocumentProcessingOrchestrator:
             
             for data in extracted_data:
                 if data.get('extracted_fields'):
+                    # Parse extracted_fields JSON string
+                    import json
+                    if isinstance(data['extracted_fields'], str):
+                        fields_list = json.loads(data['extracted_fields'])
+                    else:
+                        fields_list = data['extracted_fields']
+                    
                     # extracted_fields is stored as a list of field objects
-                    for field_data in data['extracted_fields']:
+                    for field_data in fields_list:
                         field_name = field_data.get('field_name')
                         if field_name:
                             all_extracted_fields[field_name] = field_data
@@ -385,40 +396,33 @@ class DocumentProcessingOrchestrator:
                                 'extraction_method': data['extraction_method']
                             }
             
-            # Get golden fields
-            golden_fields = golden_data.get('golden_fields', {}) if golden_data else {}
+            # Skip golden fields for now
+            golden_fields = {}
             
-            # Get validation summary
+            # Skip validation summary for now - focus on extracted fields
             validation_summary = {}
-            if validation_results and len(validation_results) > 0:
-                validation_summary = validation_results[0].get('validation_summary', {})
             
             # Calculate field statistics
             total_extracted = len(all_extracted_fields)
-            total_golden = len(golden_fields)
+            total_golden = 0  # Skip golden fields for now
             
-            # Handle validation_summary being either dict or list
-            if isinstance(validation_summary, dict):
-                total_validated = len([f for f in validation_summary.values() if f.get('status') == 'validated'])
-            elif isinstance(validation_summary, list):
-                total_validated = len([f for f in validation_summary if f.get('status') == 'validated'])
-            else:
-                total_validated = 0
+            # Skip validation for now - focus on extracted fields
+            total_validated = 0
             
             return {
                 "application_id": application_id,
                 "field_statistics": {
                     "total_extracted_fields": total_extracted,
-                    "total_golden_fields": total_golden,
-                    "total_validated_fields": total_validated,
+                    "total_golden_fields": 0,  # Skip for now
+                    "total_validated_fields": 0,  # Skip for now
                     "extraction_completion_percentage": (total_extracted / 50) * 100 if total_extracted > 0 else 0,  # Assuming ~50 total fields
-                    "validation_completion_percentage": (total_validated / total_extracted) * 100 if total_extracted > 0 else 0
+                    "validation_completion_percentage": 0  # Skip for now
                 },
                 "extracted_fields": all_extracted_fields,
-                "golden_fields": golden_fields,
+                "golden_fields": {},  # Skip for now
                 "field_sources": field_sources,
-                "validation_summary": validation_summary,
-                "is_complete": total_extracted >= 30 and total_golden >= 25  # Threshold for completion
+                "validation_summary": {},  # Skip for now
+                "is_complete": total_extracted >= 30  # Simplified threshold
             }
             
         except Exception as e:

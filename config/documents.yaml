@@ -1,1224 +1,745 @@
-# Document Processing Configuration
-# Clean configuration for mortgage document processing
-
-document_types:
-  mortgage_application:
-    name: "Mortgage Application Form"
-    description: "Primary mortgage application form"
-    priority: 1
-    mandatory: true
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 10
-    
-  # Identity Documents
+documents:
   drivers_license:
-    name: "Driver's License"
-    description: "Driver's license or permit for identity verification"
-    priority: 2
-    mandatory: true
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
+    display_name: "Driver's License"
+    classification_keywords: ["driver's license", "driving license", "driver license", "DL", "permis de conduire", "permis", "ID card", "photo ID"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the license number?"
+          alias: "license_number"
+          field_type: "text"
+        - query: "What is the full name?"
+          alias: "license_holder_name"
+          field_type: "text"
+        - query: "What is the date of birth?"
+          alias: "license_dob"
+          field_type: "date"
+        - query: "What is the address?"
+          alias: "address"
+          field_type: "text"
+        - query: "What is the issue date?"
+          alias: "issue_date"
+          field_type: "date"
+        - query: "What is the expiry date?"
+          alias: "expiry_date"
+          field_type: "date"
+        - query: "What is the class?"
+          alias: "license_class"
+          field_type: "text"
+        - query: "What is the province?"
+          alias: "issuing_province"
+          field_type: "text"
+        - query: "What is the photo ID?"
+          alias: "document_identifier"
+          field_type: "text"
   passport:
-    name: "Passport"
-    description: "Canadian passport for identity verification"
-    priority: 2
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Employment Documents
-  employment_letter:
-    name: "Employment Letter"
-    description: "Letter from employer confirming employment"
-    priority: 2
-    mandatory: true
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  pay_stub:
-    name: "Pay Stub"
-    description: "Recent pay stub for income verification"
-    priority: 3
-    mandatory: true
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  employment_contract:
-    name: "Employment Contract"
-    description: "Employment contract or agreement"
-    priority: 3
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Tax Documents
-  t4_form:
-    name: "T4 Tax Form"
-    description: "Canadian T4 tax form for income verification"
-    priority: 2
-    mandatory: true
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  cra_noa:
-    name: "CRA Notice of Assessment"
-    description: "Canada Revenue Agency Notice of Assessment"
-    priority: 3
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Financial Documents
-  bank_statement:
-    name: "Bank Statement"
-    description: "Bank account statement for financial verification"
-    priority: 3
-    mandatory: true
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 10
-    
-  savings_statement:
-    name: "Savings Statement"
-    description: "Savings account statement"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  investment_statement:
-    name: "Investment Statement"
-    description: "Investment account statement (RRSP, TFSA, etc.)"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Debt Documents
-  credit_card_statement:
-    name: "Credit Card Statement"
-    description: "Credit card statement for debt verification"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  loan_statement:
-    name: "Loan Statement"
-    description: "Personal loan statement"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  mortgage_statement:
-    name: "Mortgage Statement"
-    description: "Existing mortgage statement"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Credit Documents
-  credit_report:
-    name: "Credit Report"
-    description: "Credit report for creditworthiness assessment"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 10
-    
-  # Property Documents
-  purchase_agreement:
-    name: "Purchase Agreement"
-    description: "Property purchase agreement"
-    priority: 3
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 10
-    
-  property_assessment:
-    name: "Property Assessment"
-    description: "Property assessment for valuation"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Address Proof Documents
+    display_name: "Passport"
+    classification_keywords: ["passport", "canadian passport", "international passport", "passeport", "travel document"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the passport number?"
+          alias: "passport_number"
+          field_type: "text"
+        - query: "What is the full name?"
+          alias: "name_on_passport"
+          field_type: "text"
+        - query: "What is the nationality?"
+          alias: "nationality"
+          field_type: "text"
+        - query: "What is the date of birth?"
+          alias: "dob"
+          field_type: "date"
+        - query: "What is the issue date?"
+          alias: "issue_date"
+          field_type: "date"
+        - query: "What is the expiry date?"
+          alias: "expiry_date"
+          field_type: "date"
+        - query: "What is the place of birth?"
+          alias: "place_of_birth"
+          field_type: "text"
+  pr_card:
+    display_name: "Permanent Resident Card"
+    classification_keywords: ["PR card", "permanent resident card", "résident permanent", "carte de RP", "immigration card"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the document number?"
+          alias: "document_number"
+          field_type: "text"
+        - query: "What is the full name?"
+          alias: "name_on_card"
+          field_type: "text"
+        - query: "What is the status?"
+          alias: "residency_status"
+          field_type: "text"
+        - query: "What is the expiry date?"
+          alias: "expiry_date"
+          field_type: "date"
+        - query: "What is the date of birth?"
+          alias: "dob"
+          field_type: "date"
+  birth_certificate:
+    display_name: "Birth Certificate"
+    classification_keywords: ["birth certificate", "certificate of birth", "acte de naissance", "naissance"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the full name?"
+          alias: "name_on_birth_certificate"
+          field_type: "text"
+        - query: "What is the date of birth?"
+          alias: "dob"
+          field_type: "date"
+        - query: "What is the place of birth?"
+          alias: "place_of_birth"
+          field_type: "text"
+        - query: "What is the registration number?"
+          alias: "registration_number"
+          field_type: "text"
+  marriage_certificate:
+    display_name: "Marriage Certificate"
+    classification_keywords: ["marriage certificate", "marriage license", "certificat de mariage"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What are the names?"
+          alias: "spouse_names"
+          field_type: "text"
+        - query: "What is the marriage date?"
+          alias: "marriage_date"
+          field_type: "date"
+        - query: "What is the certificate number?"
+          alias: "certificate_number"
+          field_type: "text"
+  borrower_consent_form:
+    display_name: "Borrower Consent Form"
+    classification_keywords: ["consent form", "authorization", "borrower consent", "credit consent", "formulaire de consentement"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the name?"
+          alias: "borrower_name"
+          field_type: "text"
+        - query: "What is the date?"
+          alias: "signed_date"
+          field_type: "date"
+        - query: "What is the time?"
+          alias: "signed_time"
+          field_type: "text"
+        - query: "What is the method?"
+          alias: "consent_method"
+          field_type: "text"
   utility_bill:
-    name: "Utility Bill"
-    description: "Utility bill for address verification (hydro, gas, water, internet)"
-    priority: 3
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  rental_agreement:
-    name: "Rental Agreement"
-    description: "Rental or lease agreement for address verification"
-    priority: 3
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-    
-  # Other Documents
-  gift_letter:
-    name: "Gift Letter"
-    description: "Gift letter for down payment source verification"
-    priority: 4
-    mandatory: false
-    supported_formats: ["pdf", "png", "jpg", "jpeg"]
-    max_file_size_mb: 5
-
-# Field Extraction Configuration
-field_extraction:
-  mortgage_application:
-    queries:
-      # PAGE 1: Personal Information + Employment Information
-      # Personal Information - Primary Applicant
-      - text: "What is the first name?"
-        alias: "applicant_first_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        page: 1
-        
-      - text: "What is the last name?"
-        alias: "applicant_last_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the date of birth?"
-        alias: "applicant_dob"
-        field_type: "date"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the SIN?"
-        alias: "applicant_sin"
-        field_type: "text"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the marital status?"
-        alias: "applicant_marital_status"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "What is the phone number?"
-        alias: "applicant_phone"
-        field_type: "phone"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "What is the email?"
-        alias: "applicant_email"
-        field_type: "email"
-        required: false
-        validation_tolerance: 0.9
-        
-      - text: "What is the address?"
-        alias: "applicant_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the residency status?"
-        alias: "applicant_residency_status"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      # Employment - Primary Applicant
-      - text: "What is the employment status?"
-        alias: "employment_status"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the employer name?"
-        alias: "employer_name"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.7
-        
-      - text: "What is the employer address?"
-        alias: "employer_address"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.7
-        
-      - text: "What is the job title?"
-        alias: "job_title"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "How many years at current job?"
-        alias: "years_at_job"
-        field_type: "number"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What is the annual income?"
-        alias: "annual_income"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What are the other income sources?"
-        alias: "other_income_sources"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      # PAGE 2: Loan Information + Property Information
-      # Loan Information
-      - text: "What is the purchase price?"
-        alias: "loan_purchase_price"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the down payment amount?"
-        alias: "loan_down_payment"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the loan amount?"
-        alias: "loan_amount"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the loan purpose?"
-        alias: "loan_purpose"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      # Subject Property (Target Purchase)
-      - text: "What is the property address?"
-        alias: "property_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the property type?"
-        alias: "property_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "What is the property purchase price?"
-        alias: "property_purchase_price"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the closing date?"
-        alias: "property_closing_date"
-        field_type: "date"
-        required: false
-        validation_tolerance: 0.8
-        
-      # PAGE 3: Assets + Liabilities
-      # Assets - Primary Applicant
-      - text: "What is the bank balance?"
-        alias: "asset_bank_balance"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What is the RRSP or TFSA balance?"
-        alias: "asset_rrsp_tfsa_balance"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What is the vehicle value?"
-        alias: "asset_vehicle_value"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      # Liabilities - Primary Applicant
-      - text: "What is the credit card balance?"
-        alias: "liab_cc_balance"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What is the loan balance?"
-        alias: "liab_loan_balance"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What is the line of credit balance?"
-        alias: "liab_loc_balance"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-
-  t4_form:
-    queries:
-      - text: "What is the employee name?"
-        alias: "employee_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the Social Insurance Number?"
-        alias: "sin"
-        field_type: "text"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the tax year?"
-        alias: "tax_year"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the gross income in box 14?"
-        alias: "gross_income"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the employer name?"
-        alias: "employer_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the employer's address?"
-        alias: "employer_address"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.6
-
-  employment_letter:
-    queries:
-      - text: "What is the employee name?"
-        alias: "employee_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the employer name?"
-        alias: "employer_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the employee's position or job title?"
-        alias: "position"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the start date of employment?"
-        alias: "start_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the annual salary?"
-        alias: "annual_salary"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the employment status?"
-        alias: "employment_status"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-
+    display_name: "Utility Bill"
+    classification_keywords: ["utility bill", "hydro bill", "gas bill", "water bill", "electricity bill", "phone bill", "facture de service public"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the service address?"
+          alias: "service_address"
+          field_type: "text"
+        - query: "What is the account holder?"
+          alias: "account_holder_name"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "account_number"
+          field_type: "text"
+        - query: "What is the period?"
+          alias: "billing_period"
+          field_type: "text"
+        - query: "What is the amount?"
+          alias: "bill_amount"
+          field_type: "currency"
+        - query: "What is the due date?"
+          alias: "due_date"
+          field_type: "date"
   bank_statement:
-    queries:
-      - text: "What is the account holder name?"
-        alias: "account_holder"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the account number?"
-        alias: "account_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the statement period?"
-        alias: "statement_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the beginning balance?"
-        alias: "beginning_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the ending balance?"
-        alias: "ending_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What type of account is this?"
-        alias: "account_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
-  pay_stub:
-    queries:
-      - text: "What is the employee name?"
-        alias: "employee_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the employer name?"
-        alias: "employer_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the pay period?"
-        alias: "pay_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the gross pay?"
-        alias: "gross_pay"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the net pay?"
-        alias: "net_pay"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the year-to-date gross pay?"
-        alias: "ytd_gross"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.05
-
-  credit_report:
-    queries:
-      - text: "What is the report date?"
-        alias: "report_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the credit score?"
-        alias: "credit_score"
-        field_type: "number"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "Which credit bureau issued this report?"
-        alias: "credit_bureau"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "How many accounts are listed?"
-        alias: "account_count"
-        field_type: "number"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "How many delinquent accounts are there?"
-        alias: "delinquent_accounts"
-        field_type: "number"
-        required: false
-        validation_tolerance: 0.1
-
-  property_assessment:
-    queries:
-      - text: "What is the property address?"
-        alias: "property_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the assessed value?"
-        alias: "assessed_value"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the assessment date?"
-        alias: "assessment_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What type of property is this?"
-        alias: "property_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "What is the land value?"
-        alias: "land_value"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What is the building value?"
-        alias: "building_value"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-
-  insurance_document:
-    queries:
-      - text: "What is the policy holder's name?"
-        alias: "policy_holder"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the policy number?"
-        alias: "policy_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What type of policy is this?"
-        alias: "policy_type"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the coverage amount?"
-        alias: "coverage_amount"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the effective date?"
-        alias: "effective_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the expiry date?"
-        alias: "expiry_date"
-        field_type: "date"
-        required: false
-        validation_tolerance: 0.8
-
-  # Identity Documents
-  drivers_license:
-    queries:
-      - text: "what is the name"
-        alias: "license_holder_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "what is DOB"
-        alias: "license_dob"
-        field_type: "date"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the address?"
-        alias: "license_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the license number?"
-        alias: "license_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the license class?"
-        alias: "license_class"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
-  passport:
-    queries:
-      - text: "What is the name?"
-        alias: "passport_holder_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the date of birth?"
-        alias: "passport_dob"
-        field_type: "date"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the passport number?"
-        alias: "passport_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the nationality?"
-        alias: "nationality"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-        
-      - text: "What is the expiry date?"
-        alias: "passport_expiry"
-        field_type: "date"
-        required: false
-        validation_tolerance: 0.8
-
-  # Employment Documents
-  employment_contract:
-    queries:
-      - text: "What is the employee name?"
-        alias: "contract_employee_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the employer name?"
-        alias: "contract_employer_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the job title?"
-        alias: "contract_job_title"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the start date?"
-        alias: "contract_start_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the annual salary?"
-        alias: "contract_annual_salary"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the employment type?"
-        alias: "contract_employment_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
-  # Tax Documents
-  cra_noa:
-    queries:
-      - text: "What is the taxpayer's name on the NOA?"
-        alias: "noa_taxpayer_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the SIN on the NOA?"
-        alias: "noa_sin"
-        field_type: "text"
-        required: true
-        validation_tolerance: "exact"
-        
-      - text: "What is the tax year on the NOA?"
-        alias: "noa_tax_year"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the total income on the NOA?"
-        alias: "noa_total_income"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the net income on the NOA?"
-        alias: "noa_net_income"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-
-  # Financial Documents
+    display_name: "Bank Statement"
+    classification_keywords: ["bank statement", "account statement", "banking statement", "statement", "relevé bancaire", "relevé de compte"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the account holder name?"
+          alias: "account_holder"
+          field_type: "text"
+        - query: "What is the institution?"
+          alias: "financial_institution"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "account_number"
+          field_type: "text"
+        - query: "What is the period?"
+          alias: "statement_period"
+          field_type: "text"
+        - query: "What is the beginning balance?"
+          alias: "beginning_balance"
+          field_type: "currency"
+        - query: "What is the ending balance?"
+          alias: "ending_balance"
+          field_type: "currency"
+        - query: "What is the currency?"
+          alias: "currency_code"
+          field_type: "text"
+        - query: "What is the average balance?"
+          alias: "average_balance"
+          field_type: "currency"
+        - query: "What is the total deposits?"
+          alias: "total_deposits"
+          field_type: "currency"
+        - query: "What is the total withdrawals?"
+          alias: "total_withdrawals"
+          field_type: "currency"
   savings_statement:
-    queries:
-      - text: "What is the account holder's name on the savings statement?"
-        alias: "savings_account_holder"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the account number on the savings statement?"
-        alias: "savings_account_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the statement period on the savings statement?"
-        alias: "savings_statement_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the current balance on the savings statement?"
-        alias: "savings_current_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the account type on the savings statement?"
-        alias: "savings_account_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
+    display_name: "Savings Statement"
+    classification_keywords: ["savings statement", "high interest savings", "HISA", "statement", "relevé d'épargne"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the account holder?"
+          alias: "account_holder"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "account_number"
+          field_type: "text"
+        - query: "What is the period?"
+          alias: "statement_period"
+          field_type: "text"
+        - query: "What is the balance?"
+          alias: "current_balance"
+          field_type: "currency"
+  pay_stub:
+    display_name: "Pay Stub"
+    classification_keywords: ["pay stub", "pay slip", "payslip", "pay statement", "relevé de paie", "fiche de paie"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the employee name?"
+          alias: "employee_name"
+          field_type: "text"
+        - query: "What is the employer?"
+          alias: "employer_name"
+          field_type: "text"
+        - query: "What is the pay period?"
+          alias: "pay_period"
+          field_type: "text"
+        - query: "What is the gross pay?"
+          alias: "gross_pay"
+          field_type: "currency"
+        - query: "What is the net pay?"
+          alias: "net_pay"
+          field_type: "currency"
+        - query: "What is the YTD?"
+          alias: "ytd_income"
+          field_type: "currency"
+        - query: "What is the pay date?"
+          alias: "pay_date"
+          field_type: "date"
+        - query: "What is the rate?"
+          alias: "pay_rate"
+          field_type: "text"
+        - query: "What are deductions?"
+          alias: "deductions_summary"
+          field_type: "text"
+  employment_letter:
+    display_name: "Employment Letter"
+    classification_keywords: ["employment letter", "job letter", "verification letter", "HR letter", "lettre d'emploi", "attestation d'emploi"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the employer?"
+          alias: "employer_name"
+          field_type: "text"
+        - query: "What is the address?"
+          alias: "employer_address"
+          field_type: "text"
+        - query: "What is the employee name?"
+          alias: "employee_name"
+          field_type: "text"
+        - query: "What is the job title?"
+          alias: "job_title"
+          field_type: "text"
+        - query: "What is the status?"
+          alias: "employment_status"
+          field_type: "text"
+        - query: "What is the start date?"
+          alias: "start_date"
+          field_type: "date"
+        - query: "What is the salary?"
+          alias: "annual_salary"
+          field_type: "currency"
+        - query: "What is the contact?"
+          alias: "hr_contact"
+          field_type: "text"
+  employment_contract:
+    display_name: "Employment Contract"
+    classification_keywords: ["employment contract", "offer letter", "contract of employment", "contrat de travail"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the employer?"
+          alias: "employer_name"
+          field_type: "text"
+        - query: "What is the employee name?"
+          alias: "employee_name"
+          field_type: "text"
+        - query: "What is the start date?"
+          alias: "start_date"
+          field_type: "date"
+        - query: "What is the end date?"
+          alias: "end_date"
+          field_type: "date"
+        - query: "What is the salary?"
+          alias: "salary"
+          field_type: "currency"
+        - query: "What is the job title?"
+          alias: "job_title"
+          field_type: "text"
+  employment_verification:
+    display_name: "Employment Verification"
+    classification_keywords: ["employment verification", "VOE", "verification of employment", "vérification d'emploi"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the employer?"
+          alias: "employer_name"
+          field_type: "text"
+        - query: "What is the employee name?"
+          alias: "employee_name"
+          field_type: "text"
+        - query: "What is the status?"
+          alias: "employment_status"
+          field_type: "text"
+        - query: "What is the start date?"
+          alias: "start_date"
+          field_type: "date"
+        - query: "What is the income?"
+          alias: "stated_income"
+          field_type: "currency"
+  t4_form:
+    display_name: "T4 Statement of Remuneration Paid"
+    classification_keywords: ["T4", "statement of remuneration", "tax slip", "feuillet T4"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the name?"
+          alias: "employee_name"
+          field_type: "text"
+        - query: "What is the employer?"
+          alias: "employer_name"
+          field_type: "text"
+        - query: "What is the tax year?"
+          alias: "tax_year"
+          field_type: "number"
+        - query: "What is box 14?"
+          alias: "box_14_employment_income"
+          field_type: "currency"
+        - query: "What is the SIN?"
+          alias: "sin_number"
+          field_type: "text"
+  cra_noa:
+    display_name: "CRA Notice of Assessment"
+    classification_keywords: ["notice of assessment", "NOA", "avis de cotisation", "CRA", "ARC"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the name?"
+          alias: "taxpayer_name"
+          field_type: "text"
+        - query: "What is the tax year?"
+          alias: "tax_year"
+          field_type: "number"
+        - query: "What is line 15000?"
+          alias: "line_15000_total_income"
+          field_type: "currency"
+        - query: "What is the balance?"
+          alias: "balance_owing_or_refund"
+          field_type: "currency"
+        - query: "What is the notice date?"
+          alias: "notice_date"
+          field_type: "date"
   investment_statement:
-    queries:
-      - text: "What is the account holder's name on the investment statement?"
-        alias: "investment_account_holder"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the account number on the investment statement?"
-        alias: "investment_account_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the statement period on the investment statement?"
-        alias: "investment_statement_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the current balance on the investment statement?"
-        alias: "investment_current_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What type of investment account is this?"
-        alias: "investment_account_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
-  # Debt Documents
+    display_name: "Investment Statement (RRSP/TFSA/Non-Registered)"
+    classification_keywords: ["investment statement", "RRSP statement", "TFSA statement", "brokerage statement", "relevé de placement", "relevé REER", "relevé CELI"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the account holder?"
+          alias: "account_holder"
+          field_type: "text"
+        - query: "What is the account type?"
+          alias: "account_type"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "account_number"
+          field_type: "text"
+        - query: "What is the period?"
+          alias: "statement_period"
+          field_type: "text"
+        - query: "What is the value?"
+          alias: "current_value"
+          field_type: "currency"
   credit_card_statement:
-    queries:
-      - text: "What is the cardholder's name on the credit card statement?"
-        alias: "cc_cardholder_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the credit card number on the statement?"
-        alias: "cc_card_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the statement period on the credit card statement?"
-        alias: "cc_statement_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the current balance on the credit card statement?"
-        alias: "cc_current_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the credit limit on the credit card statement?"
-        alias: "cc_credit_limit"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-
+    display_name: "Credit Card Statement"
+    classification_keywords: ["credit card statement", "card statement", "Visa", "Mastercard", "Amex", "relevé de carte"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the cardholder?"
+          alias: "cardholder_name"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "card_number"
+          field_type: "text"
+        - query: "What is the period?"
+          alias: "statement_period"
+          field_type: "text"
+        - query: "What is the balance?"
+          alias: "current_balance"
+          field_type: "currency"
+        - query: "What is the limit?"
+          alias: "credit_limit"
+          field_type: "currency"
+        - query: "What is the minimum payment?"
+          alias: "minimum_payment"
+          field_type: "currency"
   loan_statement:
-    queries:
-      - text: "What is the borrower's name on the loan statement?"
-        alias: "loan_borrower_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the loan account number on the statement?"
-        alias: "loan_account_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the statement period on the loan statement?"
-        alias: "loan_statement_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the current balance on the loan statement?"
-        alias: "loan_current_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the monthly payment on the loan statement?"
-        alias: "loan_monthly_payment"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.05
-
+    display_name: "Loan Statement"
+    classification_keywords: ["loan statement", "student loan statement", "personal loan statement", "relevé de prêt"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the borrower name?"
+          alias: "borrower_name"
+          field_type: "text"
+        - query: "What is the lender?"
+          alias: "lender_name"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "loan_account_number"
+          field_type: "text"
+        - query: "What is the balance?"
+          alias: "outstanding_balance"
+          field_type: "currency"
+        - query: "What is the payment?"
+          alias: "monthly_payment"
+          field_type: "currency"
+        - query: "What is the rate?"
+          alias: "interest_rate"
+          field_type: "text"
   mortgage_statement:
-    queries:
-      - text: "What is the borrower's name on the mortgage statement?"
-        alias: "mortgage_borrower_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the mortgage account number on the statement?"
-        alias: "mortgage_account_number"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.9
-        
-      - text: "What is the statement period on the mortgage statement?"
-        alias: "mortgage_statement_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the current balance on the mortgage statement?"
-        alias: "mortgage_current_balance"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.1
-        
-      - text: "What is the monthly payment on the mortgage statement?"
-        alias: "mortgage_monthly_payment"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.05
-
-  # Property Documents
+    display_name: "Mortgage Statement"
+    classification_keywords: ["mortgage statement", "annual mortgage statement", "relevé hypothécaire"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the lender?"
+          alias: "lender_name"
+          field_type: "text"
+        - query: "What is the property address?"
+          alias: "property_address"
+          field_type: "text"
+        - query: "What is the account number?"
+          alias: "mortgage_account_number"
+          field_type: "text"
+        - query: "What is the balance?"
+          alias: "outstanding_balance"
+          field_type: "currency"
+        - query: "What is the payment?"
+          alias: "monthly_payment"
+          field_type: "currency"
+        - query: "What is the rate?"
+          alias: "interest_rate"
+          field_type: "text"
+        - query: "What is the maturity date?"
+          alias: "maturity_date"
+          field_type: "date"
+  credit_report:
+    display_name: "Credit Report"
+    classification_keywords: ["credit report", "Equifax", "TransUnion", "bureau report", "rapport de crédit"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the name?"
+          alias: "consumer_name"
+          field_type: "text"
+        - query: "What is the SIN?"
+          alias: "sin_number"
+          field_type: "text"
+        - query: "What is the score?"
+          alias: "credit_score"
+          field_type: "number"
+        - query: "What is the score date?"
+          alias: "score_date"
+          field_type: "date"
+        - query: "What is the total debt?"
+          alias: "total_outstanding_debt"
+          field_type: "currency"
+        - query: "What is the utilization?"
+          alias: "revolving_utilization"
+          field_type: "text"
   purchase_agreement:
-    queries:
-      - text: "What is the buyer's name on the purchase agreement?"
-        alias: "purchase_buyer_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the property address on the purchase agreement?"
-        alias: "purchase_property_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the purchase price on the agreement?"
-        alias: "purchase_price"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the down payment amount on the agreement?"
-        alias: "purchase_down_payment"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the closing date on the purchase agreement?"
-        alias: "purchase_closing_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the property type on the purchase agreement?"
-        alias: "purchase_property_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
-  # Address Proof Documents
-  utility_bill:
-    queries:
-      - text: "What is the account holder's name on the utility bill?"
-        alias: "utility_account_holder"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the service address on the utility bill?"
-        alias: "utility_service_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the billing period on the utility bill?"
-        alias: "utility_billing_period"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the amount due on the utility bill?"
-        alias: "utility_amount_due"
-        field_type: "currency"
-        required: false
-        validation_tolerance: 0.1
-        
-      - text: "What type of utility service is this?"
-        alias: "utility_service_type"
-        field_type: "text"
-        required: false
-        validation_tolerance: 0.8
-
+    display_name: "Agreement of Purchase and Sale"
+    classification_keywords: ["agreement of purchase and sale", "APS", "offer to purchase", "achat et vente", "APS immobilier", "purchase agreement"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the property address?"
+          alias: "property_address"
+          field_type: "text"
+        - query: "What is the purchase price?"
+          alias: "purchase_price"
+          field_type: "currency"
+        - query: "What is the deposit?"
+          alias: "deposit_amount"
+          field_type: "currency"
+        - query: "What is the closing date?"
+          alias: "closing_date"
+          field_type: "date"
+        - query: "What are buyer names?"
+          alias: "buyer_names"
+          field_type: "text"
+        - query: "What are seller names?"
+          alias: "seller_names"
+          field_type: "text"
+  property_tax_bill:
+    display_name: "Property Tax Bill / Assessment"
+    classification_keywords: ["property tax bill", "tax bill", "assessment", "MPAC", "property assessment", "facture de taxe", "évaluation foncière"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the property address?"
+          alias: "property_address"
+          field_type: "text"
+        - query: "What is the annual tax?"
+          alias: "annual_property_tax"
+          field_type: "currency"
+        - query: "What is the assessment value?"
+          alias: "assessment_value"
+          field_type: "currency"
+        - query: "What is the roll number?"
+          alias: "roll_number"
+          field_type: "text"
+        - query: "What is the tax year?"
+          alias: "tax_year"
+          field_type: "number"
+  condo_status_certificate:
+    display_name: "Condo Status Certificate / MLS"
+    classification_keywords: ["status certificate", "condo status", "MLS listing", "condominium certificate", "certificat d'état", "inscription MLS"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the condo fee?"
+          alias: "monthly_condo_fee"
+          field_type: "currency"
+        - query: "What is the unit address?"
+          alias: "unit_address"
+          field_type: "text"
+        - query: "What is the corporation?"
+          alias: "condo_corporation"
+          field_type: "text"
+        - query: "What is the parking?"
+          alias: "parking_details"
+          field_type: "text"
+  property_appraisal:
+    display_name: "Property Appraisal"
+    classification_keywords: ["appraisal report", "property appraisal", "valuation report", "rapport d'évaluation"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the property address?"
+          alias: "property_address"
+          field_type: "text"
+        - query: "What is the value?"
+          alias: "appraised_value"
+          field_type: "currency"
+        - query: "What is the effective date?"
+          alias: "effective_date"
+          field_type: "date"
+        - query: "What is the property type?"
+          alias: "property_type"
+          field_type: "text"
+  property_insurance:
+    display_name: "Home Insurance Binder / Policy"
+    classification_keywords: ["insurance binder", "home insurance", "property insurance", "policy", "assurance habitation", "attestation d'assurance"]
+    mandatory_for_applicant: true
+    field_extraction:
+      queries:
+        - query: "What is the insurer?"
+          alias: "insurer_name"
+          field_type: "text"
+        - query: "What is the policy number?"
+          alias: "policy_number"
+          field_type: "text"
+        - query: "What is the coverage?"
+          alias: "coverage_amount"
+          field_type: "currency"
+        - query: "What is the premium?"
+          alias: "annual_premium"
+          field_type: "currency"
+        - query: "What is the effective date?"
+          alias: "effective_date"
+          field_type: "date"
+        - query: "What is the expiry date?"
+          alias: "policy_expiry_date"
+          field_type: "date"
+  property_assessment:
+    display_name: "Property Assessment (MPAC/City)"
+    classification_keywords: ["property assessment", "assessment notice", "MPAC assessment", "avis d'évaluation", "valeur foncière"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the address?"
+          alias: "property_address"
+          field_type: "text"
+        - query: "What is the assessed value?"
+          alias: "assessed_value"
+          field_type: "currency"
+        - query: "What is the assessment year?"
+          alias: "assessment_year"
+          field_type: "number"
   rental_agreement:
-    queries:
-      - text: "What is the tenant's name on the rental agreement?"
-        alias: "rental_tenant_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the landlord's name on the rental agreement?"
-        alias: "rental_landlord_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the rental property address on the agreement?"
-        alias: "rental_property_address"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.7
-        
-      - text: "What is the monthly rent amount on the agreement?"
-        alias: "rental_monthly_rent"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the lease start date on the rental agreement?"
-        alias: "rental_lease_start_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the lease end date on the rental agreement?"
-        alias: "rental_lease_end_date"
-        field_type: "date"
-        required: false
-        validation_tolerance: 0.8
-
-  # Other Documents
+    display_name: "Rental Agreement / Lease"
+    classification_keywords: ["rental agreement", "lease", "tenancy agreement", "bail de location", "contrat de location"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What are tenant names?"
+          alias: "tenant_names"
+          field_type: "text"
+        - query: "What is the address?"
+          alias: "rental_address"
+          field_type: "text"
+        - query: "What is the rent?"
+          alias: "monthly_rent"
+          field_type: "currency"
+        - query: "What is the start date?"
+          alias: "lease_start_date"
+          field_type: "date"
+        - query: "What is the end date?"
+          alias: "lease_end_date"
+          field_type: "date"
   gift_letter:
-    queries:
-      - text: "What is the donor's name on the gift letter?"
-        alias: "gift_donor_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the recipient's name on the gift letter?"
-        alias: "gift_recipient_name"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the gift amount on the letter?"
-        alias: "gift_amount"
-        field_type: "currency"
-        required: true
-        validation_tolerance: 0.05
-        
-      - text: "What is the purpose of the gift on the letter?"
-        alias: "gift_purpose"
-        field_type: "text"
-        required: true
-        validation_tolerance: 0.8
-        
-      - text: "What is the date of the gift letter?"
-        alias: "gift_letter_date"
-        field_type: "date"
-        required: true
-        validation_tolerance: 0.8
-
-# Field Mapping Configuration
-# Maps fields from different sources to standardized field names for comparison
-field_mapping:
-  # Personal Information Fields
-  APPLICANT_FIRST_NAME:
-    application_form_field: "applicant_first_name"
-    document_fields: ["applicant_first_name", "employee_name", "policy_holder"]
-    comparison_type: "text"
-    
-  APPLICANT_LAST_NAME:
-    application_form_field: "applicant_last_name"
-    document_fields: ["applicant_last_name"]
-    comparison_type: "text"
-    
-  APPLICANT_DOB:
-    application_form_field: "applicant_dob"
-    document_fields: ["applicant_dob"]
-    comparison_type: "date"
-    
-  APPLICANT_SIN:
-    application_form_field: "applicant_sin"
-    document_fields: ["applicant_sin", "sin"]
-    comparison_type: "text"
-    
-  APPLICANT_ADDRESS:
-    application_form_field: "applicant_address"
-    document_fields: ["applicant_address"]
-    comparison_type: "text"
-    
-  APPLICANT_PHONE:
-    application_form_field: "applicant_phone"
-    document_fields: ["applicant_phone"]
-    comparison_type: "text"
-    
-  APPLICANT_EMAIL:
-    application_form_field: "applicant_email"
-    document_fields: ["applicant_email"]
-    comparison_type: "text"
-    
-  # Financial Information Fields
-  ANNUAL_INCOME:
-    application_form_field: "annual_income"
-    document_fields: ["annual_income", "gross_income", "annual_salary"]
-    comparison_type: "currency"
-    
-  EMPLOYMENT_STATUS:
-    application_form_field: "employment_status"
-    document_fields: ["employment_status"]
-    comparison_type: "text"
-    
-  EMPLOYER_NAME:
-    application_form_field: "employer_name"
-    document_fields: ["employer_name"]
-    comparison_type: "text"
-    
-  # Bank Information Fields
-  ACCOUNT_HOLDER:
-    application_form_field: "account_holder"
-    document_fields: ["account_holder"]
-    comparison_type: "text"
-    
-  ACCOUNT_NUMBER:
-    application_form_field: "account_number"
-    document_fields: ["account_number"]
-    comparison_type: "text"
-    
-  BANK_BALANCE:
-    application_form_field: "bank_balance"
-    document_fields: ["beginning_balance", "ending_balance"]
-    comparison_type: "currency"
-    
-  # Credit Information Fields
-  CREDIT_SCORE:
-    application_form_field: "credit_score"
-    document_fields: ["credit_score"]
-    comparison_type: "number"
-    
-  # Property Information Fields
-  PROPERTY_ADDRESS:
-    application_form_field: "property_address"
-    document_fields: ["property_address"]
-    comparison_type: "text"
-    
-  PROPERTY_VALUE:
-    application_form_field: "property_value"
-    document_fields: ["assessed_value", "land_value", "building_value"]
-    comparison_type: "currency"
-
-# Validation Rules
-validation_rules:
-  # Fields that must match exactly between application form and documents
-  critical_fields:
-    - "APPLICANT_FIRST_NAME"
-    - "APPLICANT_LAST_NAME"
-    - "APPLICANT_DOB"
-    - "APPLICANT_SIN"
-    - "ANNUAL_INCOME"
-    
-  # Fields that should match closely but allow some tolerance
-  important_fields:
-    - "APPLICANT_ADDRESS"
-    - "EMPLOYMENT_STATUS"
-    - "EMPLOYER_NAME"
-    - "CREDIT_SCORE"
-    
-  # Fields that are nice to have but not critical
-  optional_fields:
-    - "APPLICANT_PHONE"
-    - "APPLICANT_EMAIL"
-    - "ACCOUNT_HOLDER"
-    - "ACCOUNT_NUMBER"
-    - "BANK_BALANCE"
-    - "PROPERTY_ADDRESS"
-    - "PROPERTY_VALUE"
-    
-  # Comparison tolerances by field type
-  field_types:
-    text:
-      default_tolerance: 0.8
-      critical_tolerance: "exact"
-      description: "Text similarity comparison"
-      
-    currency:
-      default_tolerance: 0.05  # 5% difference allowed
-      critical_tolerance: 0.02  # 2% for critical fields
-      description: "Percentage difference comparison"
-      
-    date:
-      default_tolerance: "exact"
-      critical_tolerance: "exact"
-      description: "Exact date match required"
-      
-    number:
-      default_tolerance: 0.05  # 5% difference allowed
-      critical_tolerance: 0.02  # 2% for critical fields
-      description: "Percentage difference comparison"
-      
-    phone:
-      default_tolerance: 0.8
-      critical_tolerance: 0.8
-      description: "Phone number similarity"
-      
-    email:
-      default_tolerance: 0.9
-      critical_tolerance: 0.9
-      description: "Email similarity"
-
-# Processing Configuration
-processing:
-  max_concurrent_uploads: 5
-  max_concurrent_jobs: 3
-  max_file_size_mb: 50
-  default_confidence_threshold: 0.8
-  retry_attempts: 3
-  job_timeout_seconds: 300
+    display_name: "Gift Letter"
+    classification_keywords: ["gift letter", "down payment gift", "donor letter", "lettre de don"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the donor name?"
+          alias: "donor_name"
+          field_type: "text"
+        - query: "What is the recipient?"
+          alias: "recipient_name"
+          field_type: "text"
+        - query: "What is the amount?"
+          alias: "gift_amount"
+          field_type: "currency"
+        - query: "What is the date?"
+          alias: "gift_date"
+          field_type: "date"
+        - query: "What is the relationship?"
+          alias: "donor_relationship"
+          field_type: "text"
+  divorce_decree:
+    display_name: "Divorce Decree"
+    classification_keywords: ["divorce decree", "separation agreement", "court order", "jugement de divorce", "entente de séparation"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What are party names?"
+          alias: "party_names"
+          field_type: "text"
+        - query: "What is the date?"
+          alias: "order_date"
+          field_type: "date"
+        - query: "What is the case number?"
+          alias: "case_number"
+          field_type: "text"
+        - query: "What is the support?"
+          alias: "support_terms"
+          field_type: "text"
+  child_support_document:
+    display_name: "Child Support / Spousal Support Document"
+    classification_keywords: ["child support", "spousal support", "support order", "payment schedule", "ordonnance alimentaire"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What are party names?"
+          alias: "party_names"
+          field_type: "text"
+        - query: "What is the amount?"
+          alias: "support_amount"
+          field_type: "currency"
+        - query: "What is the frequency?"
+          alias: "payment_frequency"
+          field_type: "text"
+        - query: "What is the start date?"
+          alias: "support_start_date"
+          field_type: "date"
+  credit_score_certificate:
+    display_name: "Credit Score Snapshot"
+    classification_keywords: ["credit score", "score snapshot", "beacon score", "cote de crédit"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the score?"
+          alias: "credit_score"
+          field_type: "number"
+        - query: "What is the date?"
+          alias: "score_date"
+          field_type: "date"
+        - query: "What is the bureau?"
+          alias: "credit_bureau"
+          field_type: "text"
+  mls_listing:
+    display_name: "MLS Listing"
+    classification_keywords: ["MLS listing", "real estate listing", "inscription MLS", "listing sheet"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the address?"
+          alias: "property_address"
+          field_type: "text"
+        - query: "What is the list price?"
+          alias: "list_price"
+          field_type: "currency"
+        - query: "What is the property type?"
+          alias: "property_type"
+          field_type: "text"
+        - query: "What is the condo fee?"
+          alias: "monthly_condo_fee"
+          field_type: "currency"
+  heating_bill:
+    display_name: "Heating Bill / Estimate"
+    classification_keywords: ["heating bill", "gas bill", "energy bill", "heating estimate", "facture de chauffage"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the address?"
+          alias: "service_address"
+          field_type: "text"
+        - query: "What is the annual amount?"
+          alias: "annual_heating_cost"
+          field_type: "currency"
+        - query: "What is the period?"
+          alias: "billing_period"
+          field_type: "text"
+  insurance_quote:
+    display_name: "Home Insurance Quote"
+    classification_keywords: ["insurance quote", "home insurance quote", "devis d'assurance habitation"]
+    mandatory_for_applicant: false
+    field_extraction:
+      queries:
+        - query: "What is the insurer?"
+          alias: "insurer_name"
+          field_type: "text"
+        - query: "What is the premium?"
+          alias: "annual_premium"
+          field_type: "currency"
+        - query: "What is the coverage?"
+          alias: "coverage_amount"
+          field_type: "currency"
+        - query: "What is the effective date?"
+          alias: "effective_date"
+          field_type: "date"

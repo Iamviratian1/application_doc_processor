@@ -271,7 +271,15 @@ class DatabaseService:
         """Get golden data for an application"""
         query = "SELECT * FROM golden_data WHERE application_id = :application_id ORDER BY created_at DESC LIMIT 1"
         results = await self.execute_query(query, {"application_id": application_id})
-        return results[0] if results else None
+        if results and len(results) > 0:
+            result = results[0]
+            # Ensure we have a dictionary, not just an ID
+            if isinstance(result, dict):
+                return result
+            else:
+                logger.warning(f"get_golden_data returned non-dict result: {type(result)} - {result}")
+                return None
+        return None
     
     # Processing logs operations
     async def create_processing_log(self, log_data: Dict[str, Any]) -> str:

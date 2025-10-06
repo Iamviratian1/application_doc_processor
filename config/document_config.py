@@ -55,6 +55,7 @@ class DocumentConfig:
         field_mappings = {}
         for query in queries:
             # Map field_name (from alias) to query_alias (for Textract results)
+            # The extraction agent expects: field_mappings[field_name] = alias
             field_mappings[query["alias"]] = query["alias"]
         return field_mappings
     

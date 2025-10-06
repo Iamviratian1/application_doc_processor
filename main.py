@@ -366,6 +366,310 @@ async def get_golden_data(application_id: str):
         logger.error(f"Error getting golden data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/api/v1/simple-missing-fields/{application_id}")
+async def simple_missing_fields(application_id: str):
+    """Get missing fields from the entire application - fields that should be extracted from all documents combined"""
+    try:
+        # Get extracted data directly from database
+        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
+        
+        # Collect ALL extracted field names (including mortgage application)
+        extracted_field_names = set()
+        for data in extracted_data:
+            if data.get('extracted_fields'):
+                import json
+                if isinstance(data['extracted_fields'], str):
+                    fields = json.loads(data['extracted_fields'])
+                else:
+                    fields = data['extracted_fields']
+                for field in fields:
+                    extracted_field_names.add(field.get('field_name'))
+        
+        # Define a simple master list of fields that should be extracted from DOCUMENTS ONLY
+        # (excluding fields that are typically filled in the mortgage application form itself)
+        master_field_list = {
+            # Financial fields from bank statements
+            "account_holder", "account_number", "beginning_balance", "ending_balance", 
+            "statement_period",
+            
+            # Driver's license fields
+            "license_number", "license_holder_name", "license_dob", "license_class", "license_address",
+            
+            # Passport fields
+            "passport_number", "passport_holder_name", "passport_expiry", "passport_dob", "nationality",
+            
+            # Employment verification fields
+            "start_date", "position", "annual_salary",
+            
+            # Pay stub fields
+            "ytd_gross", "pay_period", "net_pay", "gross_pay",
+            
+            # Tax fields
+            "tax_year", "sin", "gross_income",
+            
+            # Credit fields
+            "credit_score", "credit_bureau", "account_count", "delinquent_accounts", "report_date",
+            
+            # Property fields
+            "property_type", "property_address", "property_purchase_price", "property_closing_date",
+            "assessed_value", "assessment_date", "land_value", "building_value"
+        }
+        
+        # Find missing fields (fields in master list but not extracted)
+        missing_field_names = master_field_list - extracted_field_names
+        
+        # Categorize missing fields
+        missing_fields = []
+        for field_name in missing_field_names:
+            # Determine category and priority
+            if field_name.startswith("applicant_"):
+                category = "Personal Information"
+                priority = "high"
+            elif field_name in ["employment_status", "employer_name", "employer_address", "job_title", "years_at_job", "annual_income", "other_income_sources"]:
+                category = "Employment Information"
+                priority = "high"
+            elif field_name in ["account_holder", "account_number", "beginning_balance", "ending_balance", "statement_period"]:
+                category = "Financial Information"
+                priority = "high"
+            elif field_name.startswith("license_"):
+                category = "Driver's License"
+                priority = "high"
+            elif field_name.startswith("passport_"):
+                category = "Passport"
+                priority = "medium"
+            elif field_name in ["start_date", "position", "annual_salary"]:
+                category = "Employment Verification"
+                priority = "high"
+            elif field_name in ["ytd_gross", "pay_period", "net_pay", "gross_pay"]:
+                category = "Pay Stub"
+                priority = "high"
+            elif field_name in ["tax_year", "sin", "gross_income"]:
+                category = "Tax Information"
+                priority = "high"
+            elif field_name.startswith("credit_") or field_name in ["account_count", "delinquent_accounts", "report_date"]:
+                category = "Credit Information"
+                priority = "high"
+            elif field_name.startswith("property_") or field_name in ["assessed_value", "assessment_date", "land_value", "building_value"]:
+                category = "Property Information"
+                priority = "high"
+            else:
+                category = "Other Information"
+                priority = "medium"
+            
+            missing_fields.append({
+                "field_name": field_name,
+                "field_display_name": field_name.replace('_', ' ').title(),
+                "category": category,
+                "priority": priority,
+                "is_critical": priority == "high"
+            })
+        
+        # Sort by priority and category
+        missing_fields.sort(key=lambda x: (x['priority'] == 'high', x['category'], x['field_name']), reverse=True)
+        
+        # Group by category for better organization
+        fields_by_category = {}
+        for field in missing_fields:
+            category = field['category']
+            if category not in fields_by_category:
+                fields_by_category[category] = []
+            fields_by_category[category].append(field)
+        
+        completion_percentage = 0.0
+        if len(master_field_list) > 0:
+            completion_percentage = round((len(extracted_field_names) / len(master_field_list)) * 100, 2)
+        
+        return {
+            "application_id": application_id,
+            "total_master_fields": len(master_field_list),
+            "total_extracted_fields": len(extracted_field_names),
+            "total_missing_fields": len(missing_field_names),
+            "completion_percentage": completion_percentage,
+            "missing_fields_by_category": fields_by_category,
+            "critical_missing_fields": [f for f in missing_fields if f['is_critical']],
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Error getting missing fields: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc(), "status": "failed"}
+
+@app.get("/api/v1/simple-required-documents/{application_id}")
+async def simple_required_documents(application_id: str):
+    """Get required documents without complex orchestrator logic"""
+    try:
+        # Get uploaded documents from database
+        documents = await orchestrator.db_service.get_documents_by_application(application_id)
+        
+        uploaded_doc_types = set()
+        for doc in documents:
+            uploaded_doc_types.add(doc.get('document_type'))
+        
+        # Get all required documents from config
+        from config.document_config import DocumentConfig
+        doc_config = DocumentConfig()
+        
+        required_documents = []
+        document_types = doc_config.yaml_loader.get_document_types()
+        
+        for doc_type, config in document_types.items():
+            is_mandatory = config.get('mandatory', False)
+            is_uploaded = doc_type in uploaded_doc_types
+            
+            required_documents.append({
+                "document_type": doc_type,
+                "display_name": config.get('display_name', doc_type),
+                "mandatory": is_mandatory,
+                "uploaded": is_uploaded,
+                "status": "uploaded" if is_uploaded else ("required" if is_mandatory else "optional")
+            })
+        
+        # Sort by mandatory first, then uploaded
+        required_documents.sort(key=lambda x: (not x['mandatory'], x['uploaded']), reverse=False)
+        
+        return {
+            "application_id": application_id,
+            "total_required_documents": len([d for d in required_documents if d['mandatory']]),
+            "total_uploaded_documents": len(uploaded_doc_types),
+            "total_missing_documents": len([d for d in required_documents if d['mandatory'] and not d['uploaded']]),
+            "required_documents": required_documents,
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Error getting required documents: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc(), "status": "failed"}
+
+@app.get("/api/v1/suggested-documents/{application_id}")
+async def suggested_documents(application_id: str):
+    """Suggest documents based on missing fields"""
+    try:
+        # Get missing fields first
+        missing_fields_response = await simple_missing_fields(application_id)
+        if missing_fields_response.get('status') != 'success':
+            return missing_fields_response
+            
+        missing_fields = missing_fields_response.get('missing_fields_by_category', {})
+        
+        # Get uploaded documents
+        documents = await orchestrator.db_service.get_documents_by_application(application_id)
+        uploaded_doc_types = set()
+        for doc in documents:
+            uploaded_doc_types.add(doc.get('document_type'))
+        
+        # Simple field-to-document mapping based on common field patterns
+        field_to_documents = {
+            # Driver's license fields
+            "license_number": ["drivers_license"],
+            "license_holder_name": ["drivers_license"],
+            "license_dob": ["drivers_license"],
+            "license_class": ["drivers_license"],
+            "license_address": ["drivers_license"],
+            
+            # Passport fields
+            "passport_number": ["passport"],
+            "passport_holder_name": ["passport"],
+            "passport_expiry": ["passport"],
+            "passport_dob": ["passport"],
+            "nationality": ["passport"],
+            
+            # Employment verification fields
+            "start_date": ["employment_letter", "employment_contract"],
+            "position": ["employment_letter", "employment_contract"],
+            "annual_salary": ["employment_letter", "employment_contract"],
+            
+            # Pay stub fields
+            "ytd_gross": ["pay_stub"],
+            "pay_period": ["pay_stub"],
+            "net_pay": ["pay_stub"],
+            "gross_pay": ["pay_stub"],
+            
+            # Tax fields
+            "tax_year": ["t4_form", "cra_noa"],
+            "sin": ["t4_form", "cra_noa"],
+            "gross_income": ["t4_form", "cra_noa"],
+            
+            # Credit fields
+            "credit_score": ["credit_report"],
+            "credit_bureau": ["credit_report"],
+            "account_count": ["credit_report"],
+            "delinquent_accounts": ["credit_report"],
+            "report_date": ["credit_report"],
+            
+            # Property fields
+            "property_type": ["purchase_agreement", "property_assessment"],
+            "property_address": ["purchase_agreement", "property_assessment"],
+            "property_purchase_price": ["purchase_agreement"],
+            "property_closing_date": ["purchase_agreement"],
+            "assessed_value": ["property_assessment"],
+            "assessment_date": ["property_assessment"],
+            "land_value": ["property_assessment"],
+            "building_value": ["property_assessment"]
+        }
+        
+        # Document metadata
+        document_metadata = {
+            "drivers_license": {"name": "Driver's License", "priority": 2, "mandatory": True},
+            "passport": {"name": "Passport", "priority": 2, "mandatory": False},
+            "employment_letter": {"name": "Employment Letter", "priority": 2, "mandatory": True},
+            "employment_contract": {"name": "Employment Contract", "priority": 3, "mandatory": False},
+            "pay_stub": {"name": "Pay Stub", "priority": 3, "mandatory": True},
+            "t4_form": {"name": "T4 Tax Form", "priority": 2, "mandatory": True},
+            "cra_noa": {"name": "CRA Notice of Assessment", "priority": 3, "mandatory": False},
+            "credit_report": {"name": "Credit Report", "priority": 4, "mandatory": False},
+            "purchase_agreement": {"name": "Purchase Agreement", "priority": 3, "mandatory": False},
+            "property_assessment": {"name": "Property Assessment", "priority": 4, "mandatory": False}
+        }
+        
+        # Find documents that can provide missing fields
+        suggested_documents = {}
+        
+        for category, fields in missing_fields.items():
+            for field in fields:
+                field_name = field.get('field_name')
+                if field_name in field_to_documents:
+                    for doc_type in field_to_documents[field_name]:
+                        if doc_type not in suggested_documents:
+                            doc_meta = document_metadata.get(doc_type, {"name": doc_type, "priority": 5, "mandatory": False})
+                            suggested_documents[doc_type] = {
+                                'document_type': doc_type,
+                                'display_name': doc_meta['name'],
+                                'priority': doc_meta['priority'],
+                                'mandatory': doc_meta['mandatory'],
+                                'uploaded': doc_type in uploaded_doc_types,
+                                'missing_fields': [],
+                                'field_count': 0
+                            }
+                        suggested_documents[doc_type]['missing_fields'].append(field_name)
+                        suggested_documents[doc_type]['field_count'] += 1
+        
+        # Convert to list and sort by priority (most fields first, then priority)
+        suggested_list = list(suggested_documents.values())
+        suggested_list.sort(key=lambda x: (-x['field_count'], x['priority']))
+        
+        # Add status based on upload and mandatory status
+        for doc in suggested_list:
+            if doc['uploaded']:
+                doc['status'] = 'uploaded'
+            elif doc['mandatory']:
+                doc['status'] = 'required'
+            else:
+                doc['status'] = 'suggested'
+        
+        return {
+            "application_id": application_id,
+            "total_suggested_documents": len(suggested_list),
+            "total_missing_fields": sum(len(fields) for fields in missing_fields.values()),
+            "suggested_documents": suggested_list,
+            "missing_fields_by_category": missing_fields,
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Error getting suggested documents: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc(), "status": "failed"}
+
 @app.get("/api/v1/field-status/{application_id}")
 async def get_field_status(application_id: str):
     """
@@ -378,7 +682,9 @@ async def get_field_status(application_id: str):
         Field status including extracted, missing, and pending fields
     """
     try:
+        logger.info(f"DEBUG: Field status endpoint called for {application_id}")
         field_status = await orchestrator.get_field_status(application_id)
+        logger.info(f"DEBUG: Field status result: {field_status}")
         
         if "error" in field_status:
             raise HTTPException(status_code=404, detail=field_status["error"])
@@ -387,7 +693,10 @@ async def get_field_status(application_id: str):
         
     except Exception as e:
         logger.error(f"Error getting field status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Error getting field status: {str(e)}")
 
 @app.get("/api/v1/extracted-fields/{application_id}")
 async def get_extracted_fields(application_id: str):
@@ -414,7 +723,6 @@ async def get_extracted_fields(application_id: str):
         
         # Combine all extracted fields from all documents
         all_extracted_fields = {}
-        total_fields = 0
         
         for data in extracted_data:
             if 'extracted_fields' in data and data['extracted_fields']:
@@ -432,7 +740,9 @@ async def get_extracted_fields(application_id: str):
                         'document_id': data.get('document_id'),
                         'extracted_at': data.get('extracted_at')
                     }
-                    total_fields += 1
+        
+        # Count the actual unique fields
+        total_fields = len(all_extracted_fields)
         
         return {
             "application_id": application_id,
@@ -446,51 +756,7 @@ async def get_extracted_fields(application_id: str):
         logger.error(f"Error getting extracted fields: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/v1/required-documents/{application_id}")
-async def get_required_documents(application_id: str):
-    """
-    Get list of required documents and their status
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Required documents with upload status and missing fields
-    """
-    try:
-        required_docs = await orchestrator.get_required_documents(application_id)
-        
-        if "error" in required_docs:
-            raise HTTPException(status_code=404, detail=required_docs["error"])
-        
-        return required_docs
-        
-    except Exception as e:
-        logger.error(f"Error getting required documents: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/v1/missing-fields/{application_id}")
-async def get_missing_fields(application_id: str):
-    """
-    Get list of missing fields and which documents can provide them
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Missing fields with suggested document types
-    """
-    try:
-        missing_fields = await orchestrator.get_missing_fields(application_id)
-        
-        if "error" in missing_fields:
-            raise HTTPException(status_code=404, detail=missing_fields["error"])
-        
-        return missing_fields
-        
-    except Exception as e:
-        logger.error(f"Error getting missing fields: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/v1/debug/jobs/{application_id}")
 async def debug_jobs(application_id: str):
@@ -623,6 +889,7 @@ async def health_check():
             "Data Formatting Agent"
         ]
     }
+
 
 # Startup and shutdown events are already defined above
 
