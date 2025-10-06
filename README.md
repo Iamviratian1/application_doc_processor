@@ -56,12 +56,12 @@ graph TB
     
     %% API Endpoints
     subgraph "API Endpoints"
-        EP1[POST /api/v1/create-application]
-        EP2[POST /api/v1/process-documents]
-        EP3[GET /api/v1/simple-missing-fields/{id}]
-        EP4[GET /api/v1/suggested-documents/{id}]
-        EP5[GET /api/v1/extracted-fields/{id}]
-        EP6[GET /api/v1/field-status/{id}]
+        EP1["POST /api/v1/create-application"]
+        EP2["POST /api/v1/process-documents"]
+        EP3["GET /api/v1/simple-missing-fields"]
+        EP4["GET /api/v1/suggested-documents"]
+        EP5["GET /api/v1/extracted-fields"]
+        EP6["GET /api/v1/field-status"]
     end
     
     %% Flow Connections
