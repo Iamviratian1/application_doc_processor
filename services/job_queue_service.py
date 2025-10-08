@@ -14,12 +14,11 @@ logger = get_logger(__name__)
 class JobQueueService:
     """Service for managing job queue and processing"""
     
-    def __init__(self, ingestion_agent=None, extraction_agent=None, validation_agent=None, formatting_agent=None):
+    def __init__(self, ingestion_agent=None, extraction_agent=None, validation_agent=None):
         self.db_service = DatabaseService()
         self.ingestion_agent = ingestion_agent
         self.extraction_agent = extraction_agent
         self.validation_agent = validation_agent
-        self.formatting_agent = formatting_agent
         self.is_running = False
         self.processing_tasks = {}
     
@@ -151,9 +150,6 @@ class JobQueueService:
             elif job_type == "validation":
                 logger.info(f"Processing validation job for application {application_id}")
                 result = await self.validation_agent.validate_application_data(application_id)
-            elif job_type == "formatting":
-                logger.info(f"Processing formatting job for application {application_id}")
-                result = await self.formatting_agent.format_application_data(application_id)
             else:
                 raise Exception(f"Unknown job type: {job_type}")
             
@@ -207,24 +203,6 @@ class JobQueueService:
             logger.error(f"Error adding validation job: {str(e)}")
             raise
     
-    async def add_formatting_job(self, application_id: str, priority: int = 2):
-        """Add formatting job to queue"""
-        try:
-            job_data = {
-                "application_id": application_id,
-                "document_id": None,
-                "job_type": "formatting",
-                "status": "pending",
-                "priority": priority
-            }
-            
-            result = await self.db_service.create_document_job(job_data)
-            logger.info(f"Added formatting job for application {application_id}")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error adding formatting job: {str(e)}")
-            raise
     
     async def get_job_status(self, application_id: str) -> Dict[str, Any]:
         """Get job status for an application"""

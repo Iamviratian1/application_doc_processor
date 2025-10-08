@@ -4,7 +4,6 @@ Handles document analysis and field extraction using AWS Textract
 """
 
 import json
-import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import os

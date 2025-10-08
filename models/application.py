@@ -8,7 +8,6 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 import uuid
-from datetime import datetime
 from typing import Optional, Dict, Any
 
 Base = declarative_base()
@@ -57,7 +56,6 @@ class Application(Base):
             'document_upload': 'Document Upload',
             'processing': 'Processing Documents',
             'validation': 'Validating Data',
-            'formatting': 'Formatting Data',
             'completed': 'Completed',
             'failed': 'Failed'
         }

@@ -1,31 +1,182 @@
 """
-Main Application Entry Point
-Clean Document Processor with Four Agents
+Clean Document Processor - Essential Endpoints Only
+This file contains only the necessary endpoints for production use.
 """
 
 import asyncio
-import os
-from typing import List, Tuple
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 import uvicorn
-from datetime import datetime
 
-from utils.logger import setup_logging, get_logger
+# Import orchestrator
+from orchestrator import DocumentProcessingOrchestrator
 
-# Setup logging
-setup_logging(level="INFO")
-logger = get_logger(__name__)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# Initialize orchestrator
+try:
+    from agents.document_ingestion_agent import DocumentIngestionAgent
+    from agents.data_extraction_agent import DataExtractionAgent
+    from agents.data_validation_agent import DataValidationAgent
+    from services.database_service import DatabaseService
+    from services.job_queue_service import JobQueueService
+    from orchestrator import DocumentProcessingOrchestrator
+    
+    orchestrator = DocumentProcessingOrchestrator()
+    logger.info("Orchestrator initialized successfully")
+    
+except Exception as e:
+    logger.error(f"Failed to initialize orchestrator: {e}")
+    import traceback
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    raise e
+
+def detect_document_type(filename: str) -> str:
+    """Auto-detect document type based on filename patterns"""
+    if not filename:
+        return "unknown"
+    
+    filename_lower = filename.lower()
+    
+    # Driver's License patterns
+    if any(keyword in filename_lower for keyword in ['driver', 'license', 'dl', 'drivers']):
+        return "drivers_license"
+    
+    # Passport patterns
+    if any(keyword in filename_lower for keyword in ['passport', 'pass']):
+        return "passport"
+    
+    # PR Card patterns
+    if any(keyword in filename_lower for keyword in ['pr', 'permanent', 'residence', 'prcard']):
+        return "pr_card"
+    
+    # Employment Letter patterns
+    if any(keyword in filename_lower for keyword in ['employment', 'job', 'work', 'letter', 'offer']):
+        return "employment_letter"
+    
+    # Pay Stub patterns
+    if any(keyword in filename_lower for keyword in ['pay', 'stub', 'payslip', 'salary', 'wage']):
+        return "pay_stub"
+    
+    # T4 Form patterns
+    if any(keyword in filename_lower for keyword in ['t4', 'tax', 'income', 't4form']):
+        return "t4_form"
+    
+    # Bank Statement patterns
+    if any(keyword in filename_lower for keyword in ['bank', 'statement', 'account', 'financial']):
+        return "bank_statement"
+    
+    # Credit Report patterns
+    if any(keyword in filename_lower for keyword in ['credit', 'report', 'score', 'bureau']):
+        return "credit_report"
+    
+    # Mortgage Application patterns
+    if any(keyword in filename_lower for keyword in ['mortgage', 'application', 'loan', 'app']):
+        return "mortgage_application"
+    
+    # Property documents
+    if any(keyword in filename_lower for keyword in ['property', 'house', 'home', 'purchase', 'sale']):
+        return "purchase_agreement"
+    
+    # Insurance documents
+    if any(keyword in filename_lower for keyword in ['insurance', 'policy', 'binder']):
+        return "property_insurance"
+    
+    # Tax documents
+    if any(keyword in filename_lower for keyword in ['tax', 'assessment', 'bill']):
+        return "property_tax_bill"
+    
+    # Condo documents
+    if any(keyword in filename_lower for keyword in ['condo', 'status', 'certificate', 'mls']):
+        return "condo_status_certificate"
+    
+    # Default to unknown if no pattern matches
+    return "unknown"
+
+# Pydantic models
+class ApplicationCreateRequest(BaseModel):
+    applicant_name: str
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "applicant_name": "John Doe"
+            }
+        }
+
+# DocumentUploadRequest removed - using Form data instead
+
+class ProcessingStatusResponse(BaseModel):
+    application_id: str
+    status: str
+    total_documents: int
+    processed_documents: int
+    pending_documents: int
+    failed_documents: int
+    processing_percentage: float
+
+class ValidationResponse(BaseModel):
+    application_id: str
+    validation_summary: Dict[str, Any]
+    validation_results: List[Dict[str, Any]]
+    golden_data_saved: bool
+
+class GoldenDataResponse(BaseModel):
+    application_id: str
+    golden_data: Optional[Dict[str, Any]] = None
+    status: str
+
+# FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
+    try:
+        logger.info("Starting Clean Document Processor")
+        
+        # Start job processor
+        try:
+            logger.info("Starting job processor")
+            job_processor_task = asyncio.create_task(orchestrator.start_job_processor())
+            logger.info("Job processor task created")
+            
+            # Store task reference for cleanup
+            app.state.job_processor_task = job_processor_task
+            
+        except Exception as e:
+            logger.error(f"Failed to start job processor: {str(e)}")
+        
+        logger.info("Clean Document Processor started successfully")
+        
+        yield
+        
+        # Cleanup
+        if hasattr(app.state, 'job_processor_task'):
+            app.state.job_processor_task.cancel()
+            try:
+                await app.state.job_processor_task
+            except asyncio.CancelledError:
+                pass
+        
+    except Exception as e:
+        logger.error(f"Error in lifespan manager: {str(e)}")
+        raise e
+
 app = FastAPI(
     title="Clean Document Processor",
-    description="Four-Agent Document Processing System for Mortgage Applications",
-    version="1.0.0"
+    description="AI-powered document processing system for mortgage applications",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Add CORS middleware
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,846 +185,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize orchestrator
-orchestrator = None
-try:
-    print("=== MAIN DEBUG: About to initialize orchestrator ===")
+# Helper functions
+def _values_match(value1: str, value2: str) -> bool:
+    """Check if two values match (with normalization)"""
+    if not value1 or not value2:
+        return False
     
-    # Test individual imports first
-    print("=== MAIN DEBUG: Testing individual imports ===")
-    try:
-        from agents.document_ingestion_agent import DocumentIngestionAgent
-        print("=== MAIN DEBUG: DocumentIngestionAgent imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: DocumentIngestionAgent import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
+    # Normalize values for comparison
+    v1 = str(value1).strip().lower().replace('"', '').replace("'", '')
+    v2 = str(value2).strip().lower().replace('"', '').replace("'", '')
     
-    try:
-        from agents.data_extraction_agent import DataExtractionAgent
-        print("=== MAIN DEBUG: DataExtractionAgent imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: DataExtractionAgent import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
+    # Exact match
+    if v1 == v2:
+        return True
     
-    try:
-        from agents.data_validation_agent import DataValidationAgent
-        print("=== MAIN DEBUG: DataValidationAgent imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: DataValidationAgent import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
+    # Check for partial matches (for addresses, names, etc.)
+    if len(v1) > 3 and len(v2) > 3:
+        # Check if one contains the other (for addresses)
+        if v1 in v2 or v2 in v1:
+            return True
+        
+        # Check similarity for names
+        from difflib import SequenceMatcher
+        similarity = SequenceMatcher(None, v1, v2).ratio()
+        if similarity > 0.8:  # 80% similarity threshold
+            return True
     
-    try:
-        from agents.data_formatting_agent import DataFormattingAgent
-        print("=== MAIN DEBUG: DataFormattingAgent imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: DataFormattingAgent import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
-    
-    try:
-        from services.database_service import DatabaseService
-        print("=== MAIN DEBUG: DatabaseService imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: DatabaseService import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
-    
-    try:
-        from services.job_queue_service import JobQueueService
-        print("=== MAIN DEBUG: JobQueueService imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: JobQueueService import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
-    
-    print("=== MAIN DEBUG: All imports successful, importing orchestrator ===")
-    try:
-        from orchestrator import DocumentProcessingOrchestrator
-        print("=== MAIN DEBUG: DocumentProcessingOrchestrator imported successfully ===")
-    except Exception as e:
-        print(f"=== MAIN ERROR: DocumentProcessingOrchestrator import failed: {str(e)} ===")
-        import traceback
-        print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-        raise
-    
-    print("=== MAIN DEBUG: All imports successful, initializing orchestrator ===")
-    orchestrator = DocumentProcessingOrchestrator()
-    print("=== MAIN DEBUG: Orchestrator initialized successfully ===")
-    
-except Exception as e:
-    print(f"=== MAIN ERROR: Failed to initialize orchestrator: {str(e)} ===")
-    import traceback
-    print(f"=== MAIN TRACEBACK: {traceback.format_exc()} ===")
-    # Don't raise - continue without orchestrator for now
-    orchestrator = None
+    return False
 
-# Startup and shutdown events
-@app.on_event("startup")
-async def startup_event():
-    """Start the job processor on startup"""
-    try:
-        logger.info("Starting Clean Document Processor")
-        print("=== STARTUP DEBUG: Starting Clean Document Processor ===")
-        
-        if orchestrator is None:
-            logger.error("=== STARTUP ERROR: Orchestrator is None, cannot start job processor ===")
-            print("=== STARTUP ERROR: Orchestrator is None, cannot start job processor ===")
-            return
-        
-        # Start the job processor in the background
-        logger.info("=== STARTUP DEBUG: About to start job processor ===")
-        print("=== STARTUP DEBUG: About to start job processor ===")
-        
-        # Create the task and store it to prevent garbage collection
-        task = asyncio.create_task(orchestrator.job_queue_service.start_job_processor())
-        logger.info("=== STARTUP DEBUG: Job processor task created ===")
-        print("=== STARTUP DEBUG: Job processor task created ===")
-        
-        # Store the task reference to prevent it from being garbage collected
-        app.state.job_processor_task = task
-        
-        logger.info("Clean Document Processor started successfully")
-        print("=== STARTUP DEBUG: Clean Document Processor started successfully ===")
-        
-    except Exception as e:
-        logger.error(f"=== STARTUP ERROR: Failed to start job processor: {str(e)} ===")
-        print(f"=== STARTUP ERROR: Failed to start job processor: {str(e)} ===")
-        import traceback
-        logger.error(f"=== STARTUP TRACEBACK: {traceback.format_exc()} ===")
-        print(f"=== STARTUP TRACEBACK: {traceback.format_exc()} ===")
-        # Don't raise - continue without job processor
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Stop the job processor on shutdown"""
-    logger.info("Stopping Clean Document Processor")
-    if orchestrator is not None:
-        await orchestrator.job_queue_service.stop_job_processor()
-    logger.info("Clean Document Processor stopped")
-
-# Pydantic models
-class ProcessingStatusResponse(BaseModel):
-    application_id: str
-    application_status: str
-    overall_progress: dict
-    agent_statuses: dict
-    job_status: dict
-    ready_for_decision_engine: bool
-
-class GoldenDataResponse(BaseModel):
-    application_id: str
-    status: str
-    total_fields: int
-    verified_fields: int
-    high_confidence_fields: int
-    data_quality_score: float
-    categories: dict
-    ready_for_decision_engine: bool
-
-class ProcessingMetricsResponse(BaseModel):
-    total_applications: int
-    completed_applications: int
-    processing_applications: int
-    failed_applications: int
-    completion_rate: float
-    pending_jobs: int
-    processing_jobs: int
-    failed_jobs: int
-
-# API Endpoints
-
-@app.post("/api/v1/create-application")
-async def create_application(
-    applicant_name: str = Form(...),
-    application_type: str = Form(default="mortgage"),
-    applicant_type: str = Form(default="applicant")
-):
-    """
-    Create a new application and return the application ID
+def _get_mismatch_severity(field_name: str, app_value: str, doc_value: str) -> str:
+    """Determine the severity of a field mismatch"""
+    critical_fields = ['sin', 'date_of_birth', 'first_name', 'last_name']
     
-    Args:
-        applicant_name: Name of the applicant
-        application_type: Type of application (default: mortgage)
-        applicant_type: 'applicant' or 'co_applicant'
+    if field_name.lower() in critical_fields:
+        return "critical"
     
-    Returns:
-        Application creation result with application_id
-    """
-    try:
-        import uuid
-        application_id = f"APP_{uuid.uuid4().hex[:8].upper()}"
-        
-        logger.info(f"Creating new application: {application_id} for {applicant_name}")
-        
-        # Create application record
-        application_data = {
-            "application_id": application_id,
-            "applicant_name": applicant_name,
-            "application_type": application_type,
-            "status": "document_upload",
-            "meta_data": {
-                "applicant_type": applicant_type,
-                "created_via": "api",
-                "created_at": datetime.now().isoformat()
-            }
-        }
-        
-        result = await orchestrator.create_application(application_data)
-        
-        if result["success"]:
-            return {
-                "success": True,
-                "application_id": application_id,
-                "message": f"Application created successfully for {applicant_name}",
-                "data": result
-            }
-        else:
-            raise HTTPException(status_code=400, detail=result["error"])
-            
-    except Exception as e:
-        logger.error(f"Error creating application: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/process-documents")
-async def process_documents(
-    files: List[UploadFile] = File(...),
-    application_id: str = Form(default=None),
-    applicant_type: str = Form(default="applicant")
-):
-    """
-    Process multiple documents for an application
+    # Check if it's a financial field
+    if any(keyword in field_name.lower() for keyword in ['income', 'salary', 'amount', 'balance']):
+        return "high"
     
-    Args:
-        files: List of uploaded files
-        application_id: Application identifier (optional - will be generated if not provided)
-        applicant_type: 'applicant' or 'co_applicant'
-    
-    Returns:
-        Processing result with generated application_id
-    """
-    try:
-        # Generate application ID if not provided
-        if not application_id:
-            import uuid
-            application_id = f"APP_{uuid.uuid4().hex[:8].upper()}"
-            logger.info(f"Generated new application ID: {application_id}")
-        
-        logger.info(f"Processing {len(files)} documents for application {application_id}")
-        
-        # Convert UploadFile objects to (content, filename) tuples
-        file_data = []
-        for file in files:
-            content = await file.read()
-            logger.info(f"File {file.filename}: size={len(content)} bytes, content_type={file.content_type}")
-            file_data.append((content, file.filename))
-        
-        # Process documents
-        result = await orchestrator.process_application_documents(
-            file_data, application_id, applicant_type
-        )
-        
-        if result["success"]:
-            return {
-                "success": True,
-                "message": "Documents processed successfully",
-                "data": result
-            }
-        else:
-            raise HTTPException(status_code=400, detail=result["error"])
-            
-    except Exception as e:
-        logger.error(f"Error processing documents: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return "medium"
 
-@app.get("/api/v1/application/{application_id}")
-async def get_application(application_id: str):
-    """
-    Get application information
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Application information
-    """
-    try:
-        application = await orchestrator.get_application(application_id)
-        
-        if not application:
-            raise HTTPException(status_code=404, detail="Application not found")
-        
-        return {
-            "success": True,
-            "application": application
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting application: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/v1/processing-status/{application_id}")
-async def get_processing_status(application_id: str):
-    """
-    Get processing status for an application
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Processing status
-    """
-    try:
-        status = await orchestrator.get_processing_status(application_id)
-        
-        if "error" in status:
-            raise HTTPException(status_code=404, detail=status["error"])
-        
-        return ProcessingStatusResponse(**status)
-        
-    except Exception as e:
-        logger.error(f"Error getting processing status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/v1/golden-data/{application_id}")
-async def get_golden_data(application_id: str):
-    """
-    Get golden data summary for an application
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Golden data summary
-    """
-    try:
-        golden_data = await orchestrator.get_golden_data_summary(application_id)
-        
-        if "error" in golden_data:
-            raise HTTPException(status_code=404, detail=golden_data["error"])
-        
-        return GoldenDataResponse(**golden_data)
-        
-    except Exception as e:
-        logger.error(f"Error getting golden data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/v1/simple-missing-fields/{application_id}")
-async def simple_missing_fields(application_id: str):
-    """Get missing fields from the entire application - fields that should be extracted from all documents combined"""
-    try:
-        # Get extracted data directly from database
-        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
-        
-        # Collect ALL extracted field names (including mortgage application)
-        extracted_field_names = set()
-        for data in extracted_data:
-            if data.get('extracted_fields'):
-                import json
-                if isinstance(data['extracted_fields'], str):
-                    fields = json.loads(data['extracted_fields'])
-                else:
-                    fields = data['extracted_fields']
-                for field in fields:
-                    extracted_field_names.add(field.get('field_name'))
-        
-        # Define a simple master list of fields that should be extracted from DOCUMENTS ONLY
-        # (excluding fields that are typically filled in the mortgage application form itself)
-        master_field_list = {
-            # Financial fields from bank statements
-            "account_holder", "account_number", "beginning_balance", "ending_balance", 
-            "statement_period",
-            
-            # Driver's license fields
-            "license_number", "license_holder_name", "license_dob", "license_class", "license_address",
-            
-            # Passport fields
-            "passport_number", "passport_holder_name", "passport_expiry", "passport_dob", "nationality",
-            
-            # Employment verification fields
-            "start_date", "position", "annual_salary",
-            
-            # Pay stub fields
-            "ytd_gross", "pay_period", "net_pay", "gross_pay",
-            
-            # Tax fields
-            "tax_year", "sin", "gross_income",
-            
-            # Credit fields
-            "credit_score", "credit_bureau", "account_count", "delinquent_accounts", "report_date",
-            
-            # Property fields
-            "property_type", "property_address", "property_purchase_price", "property_closing_date",
-            "assessed_value", "assessment_date", "land_value", "building_value"
-        }
-        
-        # Find missing fields (fields in master list but not extracted)
-        missing_field_names = master_field_list - extracted_field_names
-        
-        # Categorize missing fields
-        missing_fields = []
-        for field_name in missing_field_names:
-            # Determine category and priority
-            if field_name.startswith("applicant_"):
-                category = "Personal Information"
-                priority = "high"
-            elif field_name in ["employment_status", "employer_name", "employer_address", "job_title", "years_at_job", "annual_income", "other_income_sources"]:
-                category = "Employment Information"
-                priority = "high"
-            elif field_name in ["account_holder", "account_number", "beginning_balance", "ending_balance", "statement_period"]:
-                category = "Financial Information"
-                priority = "high"
-            elif field_name.startswith("license_"):
-                category = "Driver's License"
-                priority = "high"
-            elif field_name.startswith("passport_"):
-                category = "Passport"
-                priority = "medium"
-            elif field_name in ["start_date", "position", "annual_salary"]:
-                category = "Employment Verification"
-                priority = "high"
-            elif field_name in ["ytd_gross", "pay_period", "net_pay", "gross_pay"]:
-                category = "Pay Stub"
-                priority = "high"
-            elif field_name in ["tax_year", "sin", "gross_income"]:
-                category = "Tax Information"
-                priority = "high"
-            elif field_name.startswith("credit_") or field_name in ["account_count", "delinquent_accounts", "report_date"]:
-                category = "Credit Information"
-                priority = "high"
-            elif field_name.startswith("property_") or field_name in ["assessed_value", "assessment_date", "land_value", "building_value"]:
-                category = "Property Information"
-                priority = "high"
-            else:
-                category = "Other Information"
-                priority = "medium"
-            
-            missing_fields.append({
-                "field_name": field_name,
-                "field_display_name": field_name.replace('_', ' ').title(),
-                "category": category,
-                "priority": priority,
-                "is_critical": priority == "high"
-            })
-        
-        # Sort by priority and category
-        missing_fields.sort(key=lambda x: (x['priority'] == 'high', x['category'], x['field_name']), reverse=True)
-        
-        # Group by category for better organization
-        fields_by_category = {}
-        for field in missing_fields:
-            category = field['category']
-            if category not in fields_by_category:
-                fields_by_category[category] = []
-            fields_by_category[category].append(field)
-        
-        completion_percentage = 0.0
-        if len(master_field_list) > 0:
-            completion_percentage = round((len(extracted_field_names) / len(master_field_list)) * 100, 2)
-        
-        return {
-            "application_id": application_id,
-            "total_master_fields": len(master_field_list),
-            "total_extracted_fields": len(extracted_field_names),
-            "total_missing_fields": len(missing_field_names),
-            "completion_percentage": completion_percentage,
-            "missing_fields_by_category": fields_by_category,
-            "critical_missing_fields": [f for f in missing_fields if f['is_critical']],
-            "status": "success"
-        }
-    except Exception as e:
-        logger.error(f"Error getting missing fields: {str(e)}")
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc(), "status": "failed"}
-
-@app.get("/api/v1/simple-required-documents/{application_id}")
-async def simple_required_documents(application_id: str):
-    """Get required documents without complex orchestrator logic"""
-    try:
-        # Get uploaded documents from database
-        documents = await orchestrator.db_service.get_documents_by_application(application_id)
-        
-        uploaded_doc_types = set()
-        for doc in documents:
-            uploaded_doc_types.add(doc.get('document_type'))
-        
-        # Get all required documents from config
-        from config.document_config import DocumentConfig
-        doc_config = DocumentConfig()
-        
-        required_documents = []
-        document_types = doc_config.yaml_loader.get_document_types()
-        
-        for doc_type, config in document_types.items():
-            is_mandatory = config.get('mandatory', False)
-            is_uploaded = doc_type in uploaded_doc_types
-            
-            required_documents.append({
-                "document_type": doc_type,
-                "display_name": config.get('display_name', doc_type),
-                "mandatory": is_mandatory,
-                "uploaded": is_uploaded,
-                "status": "uploaded" if is_uploaded else ("required" if is_mandatory else "optional")
-            })
-        
-        # Sort by mandatory first, then uploaded
-        required_documents.sort(key=lambda x: (not x['mandatory'], x['uploaded']), reverse=False)
-        
-        return {
-            "application_id": application_id,
-            "total_required_documents": len([d for d in required_documents if d['mandatory']]),
-            "total_uploaded_documents": len(uploaded_doc_types),
-            "total_missing_documents": len([d for d in required_documents if d['mandatory'] and not d['uploaded']]),
-            "required_documents": required_documents,
-            "status": "success"
-        }
-    except Exception as e:
-        logger.error(f"Error getting required documents: {str(e)}")
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc(), "status": "failed"}
-
-@app.get("/api/v1/suggested-documents/{application_id}")
-async def suggested_documents(application_id: str):
-    """Suggest documents based on missing fields"""
-    try:
-        # Get missing fields first
-        missing_fields_response = await simple_missing_fields(application_id)
-        if missing_fields_response.get('status') != 'success':
-            return missing_fields_response
-            
-        missing_fields = missing_fields_response.get('missing_fields_by_category', {})
-        
-        # Get uploaded documents
-        documents = await orchestrator.db_service.get_documents_by_application(application_id)
-        uploaded_doc_types = set()
-        for doc in documents:
-            uploaded_doc_types.add(doc.get('document_type'))
-        
-        # Simple field-to-document mapping based on common field patterns
-        field_to_documents = {
-            # Driver's license fields
-            "license_number": ["drivers_license"],
-            "license_holder_name": ["drivers_license"],
-            "license_dob": ["drivers_license"],
-            "license_class": ["drivers_license"],
-            "license_address": ["drivers_license"],
-            
-            # Passport fields
-            "passport_number": ["passport"],
-            "passport_holder_name": ["passport"],
-            "passport_expiry": ["passport"],
-            "passport_dob": ["passport"],
-            "nationality": ["passport"],
-            
-            # Employment verification fields
-            "start_date": ["employment_letter", "employment_contract"],
-            "position": ["employment_letter", "employment_contract"],
-            "annual_salary": ["employment_letter", "employment_contract"],
-            
-            # Pay stub fields
-            "ytd_gross": ["pay_stub"],
-            "pay_period": ["pay_stub"],
-            "net_pay": ["pay_stub"],
-            "gross_pay": ["pay_stub"],
-            
-            # Tax fields
-            "tax_year": ["t4_form", "cra_noa"],
-            "sin": ["t4_form", "cra_noa"],
-            "gross_income": ["t4_form", "cra_noa"],
-            
-            # Credit fields
-            "credit_score": ["credit_report"],
-            "credit_bureau": ["credit_report"],
-            "account_count": ["credit_report"],
-            "delinquent_accounts": ["credit_report"],
-            "report_date": ["credit_report"],
-            
-            # Property fields
-            "property_type": ["purchase_agreement", "property_assessment"],
-            "property_address": ["purchase_agreement", "property_assessment"],
-            "property_purchase_price": ["purchase_agreement"],
-            "property_closing_date": ["purchase_agreement"],
-            "assessed_value": ["property_assessment"],
-            "assessment_date": ["property_assessment"],
-            "land_value": ["property_assessment"],
-            "building_value": ["property_assessment"]
-        }
-        
-        # Document metadata
-        document_metadata = {
-            "drivers_license": {"name": "Driver's License", "priority": 2, "mandatory": True},
-            "passport": {"name": "Passport", "priority": 2, "mandatory": False},
-            "employment_letter": {"name": "Employment Letter", "priority": 2, "mandatory": True},
-            "employment_contract": {"name": "Employment Contract", "priority": 3, "mandatory": False},
-            "pay_stub": {"name": "Pay Stub", "priority": 3, "mandatory": True},
-            "t4_form": {"name": "T4 Tax Form", "priority": 2, "mandatory": True},
-            "cra_noa": {"name": "CRA Notice of Assessment", "priority": 3, "mandatory": False},
-            "credit_report": {"name": "Credit Report", "priority": 4, "mandatory": False},
-            "purchase_agreement": {"name": "Purchase Agreement", "priority": 3, "mandatory": False},
-            "property_assessment": {"name": "Property Assessment", "priority": 4, "mandatory": False}
-        }
-        
-        # Find documents that can provide missing fields
-        suggested_documents = {}
-        
-        for category, fields in missing_fields.items():
-            for field in fields:
-                field_name = field.get('field_name')
-                if field_name in field_to_documents:
-                    for doc_type in field_to_documents[field_name]:
-                        if doc_type not in suggested_documents:
-                            doc_meta = document_metadata.get(doc_type, {"name": doc_type, "priority": 5, "mandatory": False})
-                            suggested_documents[doc_type] = {
-                                'document_type': doc_type,
-                                'display_name': doc_meta['name'],
-                                'priority': doc_meta['priority'],
-                                'mandatory': doc_meta['mandatory'],
-                                'uploaded': doc_type in uploaded_doc_types,
-                                'missing_fields': [],
-                                'field_count': 0
-                            }
-                        suggested_documents[doc_type]['missing_fields'].append(field_name)
-                        suggested_documents[doc_type]['field_count'] += 1
-        
-        # Convert to list and sort by priority (most fields first, then priority)
-        suggested_list = list(suggested_documents.values())
-        suggested_list.sort(key=lambda x: (-x['field_count'], x['priority']))
-        
-        # Add status based on upload and mandatory status
-        for doc in suggested_list:
-            if doc['uploaded']:
-                doc['status'] = 'uploaded'
-            elif doc['mandatory']:
-                doc['status'] = 'required'
-            else:
-                doc['status'] = 'suggested'
-        
-        return {
-            "application_id": application_id,
-            "total_suggested_documents": len(suggested_list),
-            "total_missing_fields": sum(len(fields) for fields in missing_fields.values()),
-            "suggested_documents": suggested_list,
-            "missing_fields_by_category": missing_fields,
-            "status": "success"
-        }
-    except Exception as e:
-        logger.error(f"Error getting suggested documents: {str(e)}")
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc(), "status": "failed"}
-
-@app.get("/api/v1/field-status/{application_id}")
-async def get_field_status(application_id: str):
-    """
-    Get detailed field extraction and validation status
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Field status including extracted, missing, and pending fields
-    """
-    try:
-        logger.info(f"DEBUG: Field status endpoint called for {application_id}")
-        field_status = await orchestrator.get_field_status(application_id)
-        logger.info(f"DEBUG: Field status result: {field_status}")
-        
-        if "error" in field_status:
-            raise HTTPException(status_code=404, detail=field_status["error"])
-        
-        return field_status
-        
-    except Exception as e:
-        logger.error(f"Error getting field status: {str(e)}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Error getting field status: {str(e)}")
-
-@app.get("/api/v1/extracted-fields/{application_id}")
-async def get_extracted_fields(application_id: str):
-    """
-    Get all extracted fields for an application
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        List of all extracted fields with their details
-    """
-    try:
-        # Get extracted data from database
-        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
-        
-        if not extracted_data:
-            return {
-                "application_id": application_id,
-                "extracted_fields": [],
-                "total_fields": 0,
-                "message": "No extracted fields found for this application"
-            }
-        
-        # Combine all extracted fields from all documents
-        all_extracted_fields = {}
-        
-        for data in extracted_data:
-            if 'extracted_fields' in data and data['extracted_fields']:
-                import json
-                if isinstance(data['extracted_fields'], str):
-                    fields = json.loads(data['extracted_fields'])
-                else:
-                    fields = data['extracted_fields']
-                
-                for field in fields:
-                    field_name = field['field_name']
-                    all_extracted_fields[field_name] = {
-                        **field,
-                        'document_type': data.get('document_type'),
-                        'document_id': data.get('document_id'),
-                        'extracted_at': data.get('extracted_at')
-                    }
-        
-        # Count the actual unique fields
-        total_fields = len(all_extracted_fields)
-        
-        return {
-            "application_id": application_id,
-            "extracted_fields": all_extracted_fields,
-            "total_fields": total_fields,
-            "document_count": len(extracted_data),
-            "message": f"Found {total_fields} extracted fields from {len(extracted_data)} documents"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting extracted fields: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
-@app.get("/api/v1/debug/jobs/{application_id}")
-async def debug_jobs(application_id: str):
-    """Debug endpoint to check job status"""
-    try:
-        jobs = await orchestrator.db_service.get_document_jobs(application_id)
-        pending_jobs = await orchestrator.db_service.get_pending_jobs()
-        return {
-            "application_jobs": jobs,
-            "all_pending_jobs": pending_jobs,
-            "job_processor_running": orchestrator.job_queue_service.is_running
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/api/v1/debug/trigger-extraction/{application_id}")
-async def trigger_extraction(application_id: str):
-    """Debug endpoint to manually trigger extraction for existing documents"""
-    try:
-        documents = await orchestrator.db_service.get_documents_by_application(application_id)
-        results = []
-        
-        for document in documents:
-            if document["processing_status"] == "pending":
-                # Create extraction job
-                await orchestrator.job_queue_service.add_extraction_job(
-                    application_id, 
-                    document["id"], 
-                    priority=5
-                )
-                results.append({
-                    "document_id": document["id"],
-                    "filename": document["filename"],
-                    "status": "job_created"
-                })
-        
-        return {
-            "success": True,
-            "message": f"Created extraction jobs for {len(results)} documents",
-            "results": results
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/api/v1/debug/documents/{application_id}")
-async def debug_documents(application_id: str):
-    """Debug endpoint to check documents in database"""
-    try:
-        documents = await orchestrator.db_service.get_documents_by_application(application_id)
-        return {
-            "success": True,
-            "application_id": application_id,
-            "document_count": len(documents),
-            "documents": documents
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/api/v1/debug/document/{document_id}")
-async def debug_document(document_id: str):
-    """Debug endpoint to check a specific document"""
-    try:
-        document = await orchestrator.db_service.get_document(document_id)
-        return {
-            "success": True,
-            "document_id": document_id,
-            "document": document
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/api/v1/retry-processing/{application_id}")
-async def retry_processing(application_id: str):
-    """
-    Retry processing for an application
-    
-    Args:
-        application_id: Application identifier
-    
-    Returns:
-        Retry result
-    """
-    try:
-        result = await orchestrator.retry_processing(application_id)
-        
-        if result["success"]:
-            return {
-                "success": True,
-                "message": "Processing retry initiated",
-                "data": result
-            }
-        else:
-            raise HTTPException(status_code=400, detail=result["error"])
-            
-    except Exception as e:
-        logger.error(f"Error retrying processing: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/v1/metrics")
-async def get_processing_metrics():
-    """
-    Get system-wide processing metrics
-    
-    Returns:
-        Processing metrics
-    """
-    try:
-        metrics = await orchestrator.get_processing_metrics()
-        
-        if "error" in metrics:
-            raise HTTPException(status_code=500, detail=metrics["error"])
-        
-        return ProcessingMetricsResponse(**metrics)
-        
-    except Exception as e:
-        logger.error(f"Error getting processing metrics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ============================================================================
+# ESSENTIAL ENDPOINTS
+# ============================================================================
 
 @app.get("/api/v1/health")
 async def health_check():
@@ -885,25 +240,596 @@ async def health_check():
         "agents": [
             "Document Ingestion Agent",
             "Data Extraction Agent", 
-            "Data Validation Agent",
-            "Data Formatting Agent"
+            "Data Validation Agent"
         ]
     }
 
+@app.post("/api/v1/create-application")
+async def create_application(request: ApplicationCreateRequest):
+    """Create a new mortgage application"""
+    try:
+        # Generate unique application ID
+        import uuid
+        application_id = f"APP_{uuid.uuid4().hex[:8].upper()}"
+        
+        application_data = {
+            "application_id": application_id,
+            "applicant_name": request.applicant_name,
+            "applicant_email": "not_provided@example.com",  # Default email since not required
+            "application_type": "mortgage",
+            "status": "document_upload",
+            "meta_data": {
+                "created_via": "api",
+                "created_at": "2025-01-01T00:00:00Z"
+            }
+        }
+        result = await orchestrator.create_application(application_data)
+        return result
+    except Exception as e:
+        logger.error(f"Error creating application: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Startup and shutdown events are already defined above
+@app.post("/api/v1/process-documents")
+async def process_documents(
+    application_id: str = Form(...),
+    files: List[UploadFile] = File(default=[])
+):
+    """Upload and process multiple documents for an application"""
+    try:
+        # Step 1: File Validation
+        from agents.file_validation_agent import FileValidationAgent
+        from config.yaml_config import YAMLConfigLoader
+        
+        # Initialize file validation agent
+        config_loader = YAMLConfigLoader()
+        file_validator = FileValidationAgent(config_loader)
+        
+        logger.info(f"=== FILE UPLOAD DEBUG ===")
+        logger.info(f"Received {len(files) if files else 0} files for application {application_id}")
+        logger.info(f"Files type: {type(files)}")
+        if files:
+            for i, file in enumerate(files):
+                logger.info(f"File {i}: {file.filename if file and hasattr(file, 'filename') else 'None'}")
+        logger.info(f"=== END FILE UPLOAD DEBUG ===")
+        
+        # Check if files were uploaded
+        if not files or len(files) == 0:
+            return {
+                "application_id": application_id,
+                "status": "success",
+                "message": "Endpoint working - no files uploaded",
+                "total_files": 0,
+                "valid_files": 0,
+                "invalid_files": 0,
+                "processed_files": [],
+                "validation_summary": {
+                    "total": 0,
+                    "valid": 0,
+                    "invalid": 0,
+                    "errors": []
+                }
+            }
+        
+        # Prepare files for validation
+        file_tuples = []
+        for file in files:
+            if file and file.filename:
+                file_content = await file.read()
+                file_tuples.append((file_content, file.filename))
+        
+        # Validate files
+        validation_result = await file_validator.validate_files(file_tuples, application_id)
+        
+        # Check if validation passed
+        if not validation_result["overall_valid"]:
+            return {
+                "application_id": application_id,
+                "status": "validation_failed",
+                "message": "File validation failed",
+                "validation_result": validation_result,
+                "error": "One or more files failed validation. Please check the validation details."
+            }
+        
+        # Step 2: Process valid files
+        logger.info(f"File validation passed for application {application_id}, proceeding with processing")
+        
+        result = await orchestrator.process_application_documents(
+            files=file_tuples,
+            application_id=application_id,
+            applicant_type="applicant"
+        )
+        
+        # Format response with validation and processing results
+        processed_files = []
+        for valid_file in validation_result["valid_files"]:
+            processed_files.append({
+                "file_name": valid_file["filename"],
+                "file_size_mb": valid_file["file_size_mb"],
+                "file_format": valid_file["file_format"],
+                "pages": valid_file.get("pages", 1),
+                "status": "processed"
+            })
+        
+        return {
+            "application_id": application_id,
+            "status": "success",
+            "total_files": len(files),
+            "valid_files": len(validation_result["valid_files"]),
+            "invalid_files": len(validation_result["invalid_files"]),
+            "processed_files": processed_files,
+            "validation_summary": validation_result["validation_summary"],
+            "processing_result": result
+        }
+    except Exception as e:
+        logger.error(f"Error processing documents: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Main entry point
+@app.get("/api/v1/application/{application_id}")
+async def get_application(application_id: str):
+    """Get application details"""
+    try:
+        result = await orchestrator.get_application(application_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Application not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting application: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/processing-status/{application_id}")
+async def get_processing_status(application_id: str):
+    """Get processing status for an application"""
+    try:
+        status = await orchestrator.get_processing_status(application_id)
+        return ProcessingStatusResponse(**status)
+    except Exception as e:
+        logger.error(f"Error getting processing status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/validate-fields/{application_id}")
+async def validate_fields(application_id: str):
+    """Validate extracted fields against application form data"""
+    try:
+        # Get application form data (from mortgage application)
+        application_form_data = await orchestrator.db_service.get_application_form_data(application_id)
+        if not application_form_data:
+            return {
+                "application_id": application_id,
+                "error": "No application form data found",
+                "validation_results": [],
+                "golden_data_saved": False
+            }
+        
+        # Get all extracted data from documents
+        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
+        if not extracted_data:
+            return {
+                "application_id": application_id,
+                "error": "No extracted data found",
+                "validation_results": [],
+                "golden_data_saved": False
+            }
+        
+        # Group extracted data by field name for comparison
+        document_fields = {}
+        
+        # Create a mapping of document_id to document info for better tracking
+        document_info = {}
+        for data in extracted_data:
+            document_info[data.get('document_id')] = {
+                'document_type': data.get('document_type'),
+                'filename': data.get('filename', 'Unknown'),
+                'extraction_method': data.get('extraction_method', 'textract_query')
+            }
+        
+        for data in extracted_data:
+            if data.get('extracted_fields'):
+                import json
+                if isinstance(data['extracted_fields'], str):
+                    fields = json.loads(data['extracted_fields'])
+                else:
+                    fields = data['extracted_fields']
+                
+                for field in fields:
+                    field_name = field.get('field_name')
+                    if field_name:
+                        if field_name not in document_fields:
+                            document_fields[field_name] = []
+                        
+                        doc_id = data.get('document_id')
+                        doc_info = document_info.get(doc_id, {})
+                        
+                        document_fields[field_name].append({
+                            'value': field.get('field_value'),
+                            'confidence': field.get('confidence', 0.0),
+                            'document_type': doc_info.get('document_type'),
+                            'document_id': doc_id,
+                            'document_name': doc_info.get('filename', 'Unknown'),
+                            'extraction_method': doc_info.get('extraction_method', 'textract_query')
+                        })
+        
+        # Perform validation comparison
+        validation_results = []
+        validated_count = 0
+        mismatch_count = 0
+        missing_count = 0
+        
+        for form_field, form_value in application_form_data.items():
+            validation_result = {
+                "field_name": form_field,
+                "application_value": form_value,
+                "document_values": [],
+                "validation_status": "missing",
+                "confidence_score": 0.0,
+                "mismatch_severity": "none",
+                "recommended_value": form_value,
+                "recommended_source": "application_form"
+            }
+            
+            if form_field in document_fields:
+                doc_values = document_fields[form_field]
+                validation_result["document_values"] = doc_values
+                
+                # Find the best matching document value
+                best_match = None
+                best_confidence = 0.0
+                
+                for doc_value in doc_values:
+                    if _values_match(form_value, doc_value['value']):
+                        if doc_value['confidence'] > best_confidence:
+                            best_match = doc_value
+                            best_confidence = doc_value['confidence']
+                
+                if best_match:
+                    validation_result["validation_status"] = "validated"
+                    validation_result["confidence_score"] = best_confidence
+                    validation_result["recommended_value"] = best_match['value']
+                    validation_result["recommended_source"] = "document_extraction"
+                    validated_count += 1
+                else:
+                    # Values don't match - determine severity
+                    validation_result["validation_status"] = "mismatch"
+                    validation_result["confidence_score"] = max([v['confidence'] for v in doc_values])
+                    validation_result["mismatch_severity"] = _get_mismatch_severity(form_field, form_value, doc_values[0]['value'])
+                    mismatch_count += 1
+            else:
+                missing_count += 1
+            
+            validation_results.append(validation_result)
+        
+        # Calculate validation statistics
+        total_fields = len(application_form_data)
+        validation_percentage = (validated_count / total_fields * 100) if total_fields > 0 else 0
+        
+        # Prepare validation summary
+        validation_summary = {
+            "total_fields": total_fields,
+            "validated_fields": validated_count,
+            "mismatch_fields": mismatch_count,
+            "missing_fields": missing_count,
+            "validation_percentage": round(validation_percentage, 2)
+        }
+        
+        # Prepare validated fields for golden table (only the BEST validated data)
+        validated_fields_for_golden = {}
+        for result in validation_results:
+            if result["validation_status"] == "validated":
+                field_name = result["field_name"]
+                
+                # Find the best document source (highest confidence)
+                best_document = None
+                best_confidence = 0.0
+                for doc_value in result["document_values"]:
+                    if doc_value.get('confidence', 0.0) > best_confidence:
+                        best_confidence = doc_value.get('confidence', 0.0)
+                        best_document = doc_value
+                
+                # Store only the best validated data in golden table
+                validated_fields_for_golden[field_name] = {
+                    "value": result["recommended_value"],
+                    "confidence": result["confidence_score"],
+                    "source": result["recommended_source"],
+                    "best_document": {
+                        "document_name": best_document.get('document_name', 'Unknown') if best_document else 'Unknown',
+                        "document_type": best_document.get('document_type') if best_document else None,
+                        "document_id": str(best_document.get('document_id')) if best_document and best_document.get('document_id') else None,
+                        "extraction_method": best_document.get('extraction_method') if best_document else None
+                    },
+                    "validation_summary": {
+                        "total_sources": len(result["document_values"]),
+                        "validation_status": result["validation_status"],
+                        "mismatch_severity": result["mismatch_severity"]
+                    }
+                }
+        
+        # Save to golden table
+        golden_data_saved = False
+        try:
+            success = await orchestrator.db_service.save_golden_data(
+                application_id, 
+                validated_fields_for_golden, 
+                validation_summary
+            )
+            golden_data_saved = success
+        except Exception as e:
+            logger.error(f"Error saving golden data: {str(e)}")
+            golden_data_saved = False
+        
+        return {
+            "application_id": application_id,
+            "validation_summary": validation_summary,
+            "validation_results": validation_results,
+            "golden_data_saved": golden_data_saved
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in field validation: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc(), "golden_data_saved": False}
+
+@app.get("/api/v1/validated-fields/{application_id}")
+async def get_validated_fields(application_id: str):
+    """Get validated fields that are matching between application form and documents"""
+    try:
+        # Get application form data
+        application_form_data = await orchestrator.db_service.get_application_form_data(application_id)
+        
+        if not application_form_data:
+            return {
+                "application_id": application_id,
+                "validated_fields": [],
+                "total_validated": 0,
+                "status": "not_found",
+                "message": "No application form data found"
+            }
+        
+        # Get extracted data and group by field
+        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
+        
+        if not extracted_data:
+            return {
+                "application_id": application_id,
+                "validated_fields": [],
+                "total_validated": 0,
+                "status": "not_found",
+                "message": "No extracted data found"
+            }
+        
+        # Group extracted data by field name for comparison
+        document_fields = {}
+        
+        # Create a mapping of document_id to document info for better tracking
+        document_info = {}
+        for data in extracted_data:
+            document_info[data.get('document_id')] = {
+                'document_type': data.get('document_type'),
+                'filename': data.get('filename', 'Unknown'),
+                'extraction_method': data.get('extraction_method', 'textract_query')
+            }
+        
+        for data in extracted_data:
+            if data.get('extracted_fields'):
+                import json
+                if isinstance(data['extracted_fields'], str):
+                    fields = json.loads(data['extracted_fields'])
+                else:
+                    fields = data['extracted_fields']
+                
+                for field in fields:
+                    field_name = field.get('field_name')
+                    if field_name:
+                        if field_name not in document_fields:
+                            document_fields[field_name] = []
+                        
+                        doc_id = data.get('document_id')
+                        doc_info = document_info.get(doc_id, {})
+                        
+                        document_fields[field_name].append({
+                            'value': field.get('field_value'),
+                            'confidence': field.get('confidence', 0.0),
+                            'document_type': doc_info.get('document_type'),
+                            'document_id': doc_id,
+                            'document_name': doc_info.get('filename', 'Unknown'),
+                            'extraction_method': doc_info.get('extraction_method', 'textract_query')
+                        })
+        
+        # Find validated fields (matching between application form and documents)
+        validated_fields = []
+        
+        for form_field, form_value in application_form_data.items():
+            if form_field in document_fields:
+                doc_values = document_fields[form_field]
+                
+                # Check if any document value matches the application form value
+                matching_documents = []
+                for doc_value in doc_values:
+                    if _values_match(form_value, doc_value['value']):
+                        matching_documents.append({
+                            'document_name': doc_value.get('document_name', 'Unknown'),
+                            'document_type': doc_value.get('document_type'),
+                            'document_id': str(doc_value.get('document_id')) if doc_value.get('document_id') else None,
+                            'confidence': doc_value.get('confidence', 0.0),
+                            'extraction_method': doc_value.get('extraction_method', 'textract_query')
+                        })
+                
+                if matching_documents:
+                    # Find the best match (highest confidence)
+                    best_match = max(matching_documents, key=lambda x: x['confidence'])
+                    
+                    validated_fields.append({
+                        'field_name': form_field,
+                        'application_value': form_value,
+                        'validated_value': form_value,  # The validated value is the same as application value when they match
+                        'confidence': best_match['confidence'],
+                        'best_document': best_match,
+                        'total_sources': len(matching_documents),
+                        'validation_status': 'validated'
+                    })
+        
+        return {
+            "application_id": application_id,
+            "validated_fields": validated_fields,
+            "total_validated": len(validated_fields),
+            "validation_summary": {
+                "total_application_fields": len(application_form_data),
+                "validated_fields": len(validated_fields),
+                "validation_percentage": round((len(validated_fields) / len(application_form_data)) * 100, 2) if application_form_data else 0
+            },
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting validated fields: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+@app.get("/api/v1/golden-data/{application_id}")
+async def get_golden_data(application_id: str):
+    """Get golden data for an application"""
+    try:
+        golden_data = await orchestrator.db_service.get_golden_data(application_id)
+        if not golden_data:
+            return {
+                "application_id": application_id,
+                "error": "No golden data found",
+                "golden_data": None
+            }
+        
+        return {
+            "application_id": application_id,
+            "golden_data": golden_data,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting golden data: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+@app.get("/api/v1/extracted-fields/{application_id}")
+async def get_extracted_fields(application_id: str):
+    """Get all extracted fields for an application"""
+    try:
+        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
+        
+        if not extracted_data:
+            return {
+                "application_id": application_id,
+                "extracted_fields": [],
+                "total_fields": 0,
+                "message": "No extracted data found"
+            }
+        
+        # Combine all extracted fields
+        all_fields = []
+        for data in extracted_data:
+            if data.get('extracted_fields'):
+                import json
+                if isinstance(data['extracted_fields'], str):
+                    fields = json.loads(data['extracted_fields'])
+                else:
+                    fields = data['extracted_fields']
+                
+                for field in fields:
+                    field['document_id'] = data.get('document_id')
+                    field['extracted_at'] = data.get('extracted_at')
+                    all_fields.append(field)
+        
+        return {
+            "application_id": application_id,
+            "extracted_fields": all_fields,
+            "total_fields": len(all_fields),
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting extracted fields: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+@app.get("/api/v1/simple-missing-fields/{application_id}")
+async def simple_missing_fields(application_id: str):
+    """Get missing fields from the entire application - fields that should be extracted from all documents combined"""
+    try:
+        # Get extracted data directly from database
+        extracted_data = await orchestrator.db_service.get_extracted_data_by_application(application_id)
+        
+        if not extracted_data:
+            return {
+                "application_id": application_id,
+                "missing_fields": [],
+                "total_missing": 0,
+                "message": "No extracted data found"
+            }
+        
+        # Collect ALL extracted field names
+        extracted_field_names = set()
+        for data in extracted_data:
+            if data.get('extracted_fields'):
+                import json
+                if isinstance(data['extracted_fields'], str):
+                    fields = json.loads(data['extracted_fields'])
+                else:
+                    fields = data['extracted_fields']
+                for field in fields:
+                    if field.get('field_name'):
+                        extracted_field_names.add(field['field_name'])
+        
+        # Get uploaded documents
+        documents = await orchestrator.db_service.get_documents_by_application(application_id)
+        uploaded_doc_types = set()
+        for doc in documents:
+            uploaded_doc_types.add(doc.get('document_type'))
+        
+        # Build master field list from all document types (like simple-missing-fields)
+        master_field_list = set()
+        from config.document_config import DocumentConfig
+        doc_config = DocumentConfig()
+        all_doc_types = doc_config.yaml_loader.get_document_types()
+        
+        for doc_type in all_doc_types.keys():
+            queries = doc_config.get_queries_for_document_type(doc_type)
+            for query in queries:
+                if isinstance(query, dict) and "Alias" in query:
+                    master_field_list.add(query["Alias"])
+        
+        # Find missing fields
+        missing_fields = master_field_list - extracted_field_names
+        
+        # Convert to list of field objects with priority
+        missing_field_objects = []
+        for field_name in missing_fields:
+            # Determine priority based on field name
+            priority = "medium"
+            if any(keyword in field_name.lower() for keyword in ['sin', 'date_of_birth', 'first_name', 'last_name']):
+                priority = "high"
+            elif any(keyword in field_name.lower() for keyword in ['income', 'salary', 'amount', 'balance']):
+                priority = "high"
+            
+            missing_field_objects.append({
+                "field_name": field_name,
+                "priority": priority,
+                "is_critical": priority == "high"
+            })
+        
+        # Sort by priority (high first)
+        missing_field_objects.sort(key=lambda x: (x['priority'] == 'high', x['field_name']), reverse=True)
+        
+        return {
+            "application_id": application_id,
+            "missing_fields": missing_field_objects,
+            "total_missing": len(missing_field_objects),
+            "critical_missing_fields": [f for f in missing_field_objects if f['is_critical']],
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting missing fields: {str(e)}")
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
 if __name__ == "__main__":
-    # Load environment variables
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    # Run the application
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000)

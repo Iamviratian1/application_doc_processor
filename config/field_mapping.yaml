@@ -1,0 +1,97 @@
+# Field Mappings for Validation
+# Maps field names to their corresponding document types and validation rules
+field_mapping:
+  # Personal Information Fields
+  first_name:
+    document_types: ["mortgage_application", "drivers_license", "passport", "pr_card", "birth_certificate", "marriage_certificate"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 1
+      max_length: 50
+  last_name:
+    document_types: ["mortgage_application", "drivers_license", "passport", "pr_card", "birth_certificate", "marriage_certificate"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 1
+      max_length: 50
+  date_of_birth:
+    document_types: ["mortgage_application", "drivers_license", "passport", "pr_card", "birth_certificate"]
+    field_type: "date"
+    validation_rules:
+      required: true
+      format: "YYYY-MM-DD"
+  sin:
+    document_types: ["mortgage_application", "t4_form", "cra_noa", "credit_report"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      pattern: "^[0-9]{3}-[0-9]{3}-[0-9]{3}$"
+  
+  # Financial Information Fields
+  annual_income:
+    document_types: ["mortgage_application", "pay_stub", "employment_letter", "t4_form", "cra_noa"]
+    field_type: "currency"
+    validation_rules:
+      required: true
+      min_value: 0
+  account_holder:
+    document_types: ["bank_statement", "savings_statement", "investment_statement"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 1
+  account_number:
+    document_types: ["bank_statement", "savings_statement", "investment_statement", "credit_card_statement", "loan_statement", "mortgage_statement"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 4
+  
+  # Property Information Fields
+  property_address:
+    document_types: ["mortgage_application", "purchase_agreement", "property_tax_bill", "property_insurance", "property_assessment", "mls_listing"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 10
+  purchase_price:
+    document_types: ["mortgage_application", "purchase_agreement", "property_appraisal"]
+    field_type: "currency"
+    validation_rules:
+      required: true
+      min_value: 0
+  
+  # Employment Information Fields
+  employer_name:
+    document_types: ["mortgage_application", "pay_stub", "employment_letter", "employment_contract", "employment_verification", "t4_form"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 1
+  job_title:
+    document_types: ["mortgage_application", "pay_stub", "employment_letter", "employment_contract", "employment_verification"]
+    field_type: "text"
+    validation_rules:
+      required: true
+      min_length: 1
+
+# Validation Rules
+validation_rules:
+  critical_fields:
+    - "first_name"
+    - "last_name"
+    - "date_of_birth"
+    - "sin"
+    - "annual_income"
+  field_requirements:
+    personal_info:
+      required_fields: ["first_name", "last_name", "date_of_birth", "sin"]
+      document_sources: ["mortgage_application", "drivers_license", "passport", "pr_card"]
+    financial_info:
+      required_fields: ["annual_income", "account_holder", "account_number"]
+      document_sources: ["bank_statement", "pay_stub", "t4_form", "cra_noa"]
+    property_info:
+      required_fields: []
+      document_sources: ["purchase_agreement", "property_tax_bill", "property_appraisal"]

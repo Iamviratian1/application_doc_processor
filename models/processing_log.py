@@ -18,7 +18,7 @@ class ProcessingLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     application_id = Column(String(255), ForeignKey("applications.application_id"), nullable=False, index=True)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"))
-    agent_name = Column(String(50), nullable=False, index=True)  # 'ingestion', 'extraction', 'validation', 'formatting'
+    agent_name = Column(String(50), nullable=False, index=True)  # 'ingestion', 'extraction', 'validation'
     step_name = Column(String(100), nullable=False)
     status = Column(String(20), nullable=False)  # 'started', 'completed', 'failed', 'skipped'
     message = Column(Text)
@@ -72,7 +72,6 @@ class ProcessingLog(Base):
             'ingestion': 'Document Ingestion Agent',
             'extraction': 'Data Extraction Agent',
             'validation': 'Data Validation Agent',
-            'formatting': 'Data Formatting Agent'
         }
         return agent_map.get(self.agent_name, self.agent_name.title())
     

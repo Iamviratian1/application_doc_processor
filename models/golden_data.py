@@ -1,6 +1,6 @@
 """
 Golden Data Model
-Represents the final formatted and validated data from the Data Formatting Agent
+Represents the final validated data from the Data Validation Agent
 """
 
 from sqlalchemy import Column, String, DateTime, Numeric, Text, Boolean, ForeignKey

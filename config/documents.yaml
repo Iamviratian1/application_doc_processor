@@ -1,8 +1,281 @@
 documents:
+  mortgage_application:
+    display_name: "Mortgage Application Form"
+    classification_keywords: ["mortgage application", "loan application", "mortgage form", "application form", "demande de prêt hypothécaire", "formulaire de demande"]
+    mandatory_for_applicant: true
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 10
+    textract_limits:
+      max_pages: 3000
+      max_file_size_mb: 10
+      supported_formats: ["pdf", "png", "jpg", "jpeg", "tiff"]
+    field_extraction:
+      queries:
+        # Personal Information Section (Page 1)
+        - query: "What is first name"
+          alias: "first_name"
+          field_type: "text"
+          page: 1
+        - query: "What is last name"
+          alias: "last_name"
+          field_type: "text"
+          page: 1
+        - query: "What is date of birth"
+          alias: "date_of_birth"
+          field_type: "date"
+          page: 1
+        - query: "What is SIN number"
+          alias: "sin"
+          field_type: "text"
+          page: 1
+        - query: "What is marital status"
+          alias: "marital_status"
+          field_type: "text"
+          page: 1
+        - query: "What is residency status"
+          alias: "residency_status"
+          field_type: "text"
+          page: 1
+        - query: "What is current address"
+          alias: "current_address"
+          field_type: "text"
+          page: 1
+        - query: "What is phone number"
+          alias: "phone"
+          field_type: "text"
+          page: 1
+        - query: "What is email address"
+          alias: "email"
+          field_type: "text"
+          page: 1
+        # Loan Information Section (Page 1)
+        - query: "What is purchase price"
+          alias: "purchase_price"
+          field_type: "currency"
+          page: 1
+        - query: "What is down payment"
+          alias: "down_payment"
+          field_type: "currency"
+          page: 1
+        - query: "What is down payment source"
+          alias: "down_payment_source"
+          field_type: "text"
+          page: 1
+        - query: "What is loan amount"
+          alias: "loan_amount"
+          field_type: "currency"
+          page: 1
+        - query: "What is amortization"
+          alias: "amortization"
+          field_type: "text"
+          page: 1
+        - query: "What is term"
+          alias: "term"
+          field_type: "text"
+          page: 1
+        - query: "What is payment frequency"
+          alias: "payment_frequency"
+          field_type: "text"
+          page: 1
+        - query: "What is payment start date"
+          alias: "payment_start_date"
+          field_type: "date"
+          page: 1
+        - query: "What is closing date"
+          alias: "closing_date"
+          field_type: "date"
+          page: 1
+        - query: "What is LTV ratio"
+          alias: "ltv"
+          field_type: "text"
+          page: 1
+        # Employment Information Section (Page 2)
+        - query: "What is employer name"
+          alias: "employer_name"
+          field_type: "text"
+          page: 2
+        - query: "What is employer address"
+          alias: "employer_address"
+          field_type: "text"
+          page: 2
+        - query: "What is job title"
+          alias: "job_title"
+          field_type: "text"
+          page: 2
+        - query: "What is employment status"
+          alias: "employment_status"
+          field_type: "text"
+          page: 2
+        - query: "What is years at job"
+          alias: "years_at_job"
+          field_type: "number"
+          page: 2
+        - query: "What is annual income"
+          alias: "annual_income"
+          field_type: "currency"
+          page: 2
+        - query: "What is year to date income"
+          alias: "year_to_date_income"
+          field_type: "currency"
+          page: 2
+        - query: "What is T4 box 14 income"
+          alias: "t4_box_14_employment_income"
+          field_type: "currency"
+          page: 2
+        - query: "What is NOA line 15000 income"
+          alias: "noa_line_15000_total_income"
+          field_type: "currency"
+          page: 2
+        # Assets Section (Page 2)
+        - query: "What is savings institution"
+          alias: "savings_institution"
+          field_type: "text"
+          page: 2
+        - query: "What is savings account number"
+          alias: "savings_account_number"
+          field_type: "text"
+          page: 2
+        - query: "What is savings balance"
+          alias: "savings_balance"
+          field_type: "currency"
+          page: 2
+        - query: "What is RRSP institution"
+          alias: "rrsp_institution"
+          field_type: "text"
+          page: 2
+        - query: "What is RRSP value"
+          alias: "rrsp_value"
+          field_type: "currency"
+          page: 2
+        - query: "What is RRSP HBP"
+          alias: "rrsp_used_for_hbp"
+          field_type: "text"
+          page: 2
+        - query: "What is vehicle make model"
+          alias: "vehicle_make_model"
+          field_type: "text"
+          page: 2
+        - query: "What is vehicle value"
+          alias: "vehicle_value"
+          field_type: "currency"
+          page: 2
+        - query: "What is vehicle ownership"
+          alias: "vehicle_ownership"
+          field_type: "text"
+          page: 2
+        - query: "What is property owned"
+          alias: "property_owned"
+          field_type: "text"
+          page: 2
+        - query: "What is total assets value"
+          alias: "total_assets_value"
+          field_type: "currency"
+          page: 2
+        # Liabilities Section (Page 3)
+        - query: "What is credit card institution"
+          alias: "credit_card_institution"
+          field_type: "text"
+          page: 3
+        - query: "What is credit card type"
+          alias: "credit_card_type"
+          field_type: "text"
+          page: 3
+        - query: "What is credit card balance"
+          alias: "credit_card_balance"
+          field_type: "currency"
+          page: 3
+        - query: "What is credit card limit"
+          alias: "credit_card_limit"
+          field_type: "currency"
+          page: 3
+        - query: "What is credit card minimum payment"
+          alias: "credit_card_minimum_payment"
+          field_type: "currency"
+          page: 3
+        - query: "What is student loan institution"
+          alias: "student_loan_institution"
+          field_type: "text"
+          page: 3
+        - query: "What is student loan balance"
+          alias: "student_loan_balance"
+          field_type: "currency"
+          page: 3
+        - query: "What is student loan monthly payment"
+          alias: "student_loan_monthly_payment"
+          field_type: "currency"
+          page: 3
+        - query: "What is total monthly debts"
+          alias: "total_monthly_debts"
+          field_type: "currency"
+          page: 3
+        # Property Information Section (Page 3)
+        - query: "What is property address"
+          alias: "property_address"
+          field_type: "text"
+          page: 3
+        - query: "What is property type"
+          alias: "property_type"
+          field_type: "text"
+          page: 3
+        - query: "What is occupancy"
+          alias: "occupancy"
+          field_type: "text"
+          page: 3
+        - query: "What is property purchase price"
+          alias: "property_purchase_price"
+          field_type: "currency"
+          page: 3
+        - query: "What is annual property tax"
+          alias: "annual_property_tax"
+          field_type: "currency"
+          page: 3
+        - query: "What is monthly condo fees"
+          alias: "monthly_condo_fees"
+          field_type: "currency"
+          page: 3
+        - query: "What is annual heating cost"
+          alias: "annual_heating_cost"
+          field_type: "currency"
+          page: 3
+        - query: "What is appraised value"
+          alias: "appraised_value"
+          field_type: "currency"
+          page: 3
+        # Home Insurance Section (Page 3)
+        - query: "What is home insurance insurer"
+          alias: "home_insurance_insurer"
+          field_type: "text"
+          page: 3
+        - query: "What is home insurance policy number"
+          alias: "home_insurance_policy_number"
+          field_type: "text"
+          page: 3
+        - query: "What is home insurance coverage"
+          alias: "home_insurance_coverage_amount"
+          field_type: "currency"
+          page: 3
+        - query: "What is home insurance premium"
+          alias: "home_insurance_annual_premium"
+          field_type: "currency"
+          page: 3
+        - query: "What is home insurance effective date"
+          alias: "home_insurance_effective_date"
+          field_type: "date"
+          page: 3
+        - query: "What is home insurance expiry date"
+          alias: "home_insurance_expiry_date"
+          field_type: "date"
+          page: 3
   drivers_license:
     display_name: "Driver's License"
     classification_keywords: ["driver's license", "driving license", "driver license", "DL", "permis de conduire", "permis", "ID card", "photo ID"]
     mandatory_for_applicant: true
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 5
+    textract_limits:
+      max_pages: 1
+      max_file_size_mb: 5
+      supported_formats: ["pdf", "png", "jpg", "jpeg"]
     field_extraction:
       queries:
         - query: "What is the license number?"
@@ -36,6 +309,12 @@ documents:
     display_name: "Passport"
     classification_keywords: ["passport", "canadian passport", "international passport", "passeport", "travel document"]
     mandatory_for_applicant: false
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 5
+    textract_limits:
+      max_pages: 1
+      max_file_size_mb: 5
+      supported_formats: ["pdf", "png", "jpg", "jpeg"]
     field_extraction:
       queries:
         - query: "What is the passport number?"
@@ -159,6 +438,42 @@ documents:
     display_name: "Bank Statement"
     classification_keywords: ["bank statement", "account statement", "banking statement", "statement", "relevé bancaire", "relevé de compte"]
     mandatory_for_applicant: true
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 10
+    textract_limits:
+      max_pages: 10
+      max_file_size_mb: 10
+      supported_formats: ["pdf", "png", "jpg", "jpeg", "tiff"]
+  pr_card:
+    display_name: "Permanent Resident Card"
+    classification_keywords: ["PR card", "permanent resident card", "résident permanent", "carte de RP", "immigration card"]
+    mandatory_for_applicant: true
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 5
+    textract_limits:
+      max_pages: 1
+      max_file_size_mb: 5
+      supported_formats: ["pdf", "png", "jpg", "jpeg"]
+  t4_form:
+    display_name: "T4 Statement of Remuneration Paid"
+    classification_keywords: ["T4", "statement of remuneration", "tax slip", "feuillet T4"]
+    mandatory_for_applicant: true
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 5
+    textract_limits:
+      max_pages: 2
+      max_file_size_mb: 5
+      supported_formats: ["pdf", "png", "jpg", "jpeg"]
+  utility_bill:
+    display_name: "Utility Bill"
+    classification_keywords: ["utility bill", "hydro bill", "gas bill", "water bill", "electricity bill", "phone bill", "facture de service public"]
+    mandatory_for_applicant: false
+    supported_formats: ["pdf", "png", "jpg", "jpeg"]
+    max_file_size_mb: 5
+    textract_limits:
+      max_pages: 2
+      max_file_size_mb: 5
+      supported_formats: ["pdf", "png", "jpg", "jpeg"]
     field_extraction:
       queries:
         - query: "What is the account holder name?"
@@ -458,7 +773,7 @@ documents:
   credit_report:
     display_name: "Credit Report"
     classification_keywords: ["credit report", "Equifax", "TransUnion", "bureau report", "rapport de crédit"]
-    mandatory_for_applicant: true
+    mandatory_for_applicant: false
     field_extraction:
       queries:
         - query: "What is the name?"
@@ -482,7 +797,7 @@ documents:
   purchase_agreement:
     display_name: "Agreement of Purchase and Sale"
     classification_keywords: ["agreement of purchase and sale", "APS", "offer to purchase", "achat et vente", "APS immobilier", "purchase agreement"]
-    mandatory_for_applicant: true
+    mandatory_for_applicant: false
     field_extraction:
       queries:
         - query: "What is the property address?"
@@ -506,7 +821,7 @@ documents:
   property_tax_bill:
     display_name: "Property Tax Bill / Assessment"
     classification_keywords: ["property tax bill", "tax bill", "assessment", "MPAC", "property assessment", "facture de taxe", "évaluation foncière"]
-    mandatory_for_applicant: true
+    mandatory_for_applicant: false
     field_extraction:
       queries:
         - query: "What is the property address?"
@@ -527,7 +842,7 @@ documents:
   condo_status_certificate:
     display_name: "Condo Status Certificate / MLS"
     classification_keywords: ["status certificate", "condo status", "MLS listing", "condominium certificate", "certificat d'état", "inscription MLS"]
-    mandatory_for_applicant: true
+    mandatory_for_applicant: false
     field_extraction:
       queries:
         - query: "What is the condo fee?"
@@ -563,7 +878,7 @@ documents:
   property_insurance:
     display_name: "Home Insurance Binder / Policy"
     classification_keywords: ["insurance binder", "home insurance", "property insurance", "policy", "assurance habitation", "attestation d'assurance"]
-    mandatory_for_applicant: true
+    mandatory_for_applicant: false
     field_extraction:
       queries:
         - query: "What is the insurer?"

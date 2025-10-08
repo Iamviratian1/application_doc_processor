@@ -3,14 +3,12 @@ Document Processing Orchestrator
 Main orchestrator that coordinates all four agents in the document processing pipeline
 """
 
-import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from agents.document_ingestion_agent import DocumentIngestionAgent
 from agents.data_extraction_agent import DataExtractionAgent
 from agents.data_validation_agent import DataValidationAgent
-from agents.data_formatting_agent import DataFormattingAgent
 from services.database_service import DatabaseService
 from services.job_queue_service import JobQueueService
 from utils.logger import get_logger
@@ -23,7 +21,6 @@ class DocumentProcessingOrchestrator:
     1. Document Ingestion Agent - Handles document upload and validation
     2. Data Extraction Agent - Extracts data using AWS Textract
     3. Data Validation Agent - Validates extracted data against application form
-    4. Data Formatting Agent - Formats and stores final data in golden table
     """
     
     def __init__(self):
@@ -47,17 +44,13 @@ class DocumentProcessingOrchestrator:
             print("=== ORCHESTRATOR DEBUG: Initializing validation agent ===")
             self.validation_agent = DataValidationAgent()
             
-            logger.info("=== ORCHESTRATOR DEBUG: Initializing formatting agent ===")
-            print("=== ORCHESTRATOR DEBUG: Initializing formatting agent ===")
-            self.formatting_agent = DataFormattingAgent()
             
             logger.info("=== ORCHESTRATOR DEBUG: Initializing job queue service ===")
             print("=== ORCHESTRATOR DEBUG: Initializing job queue service ===")
             self.job_queue_service = JobQueueService(
                 ingestion_agent=self.ingestion_agent,
                 extraction_agent=self.extraction_agent,
-                validation_agent=self.validation_agent,
-                formatting_agent=self.formatting_agent
+                validation_agent=self.validation_agent
             )
             
             logger.info("=== ORCHESTRATOR DEBUG: Orchestrator initialized successfully ===")
@@ -248,14 +241,13 @@ class DocumentProcessingOrchestrator:
             ingestion_status = await self.ingestion_agent.get_upload_status(application_id)
             extraction_status = await self.extraction_agent.get_extraction_status(application_id)
             validation_status = await self.validation_agent.get_validation_status(application_id)
-            formatting_status = await self.formatting_agent.get_formatting_status(application_id)
             
             # Get job status
             job_status = await self.job_queue_service.get_job_status(application_id)
             
             # Calculate overall progress
             overall_progress = self._calculate_overall_progress(
-                ingestion_status, extraction_status, validation_status, formatting_status
+                ingestion_status, extraction_status, validation_status
             )
             
             return {
@@ -265,8 +257,7 @@ class DocumentProcessingOrchestrator:
                 "agent_statuses": {
                     "ingestion": ingestion_status,
                     "extraction": extraction_status,
-                    "validation": validation_status,
-                    "formatting": formatting_status
+                "validation": validation_status
                 },
                 "job_status": job_status,
                 "ready_for_decision_engine": overall_progress["completion_percentage"] >= 80
@@ -283,8 +274,7 @@ class DocumentProcessingOrchestrator:
         self, 
         ingestion_status: Dict[str, Any], 
         extraction_status: Dict[str, Any], 
-        validation_status: Dict[str, Any], 
-        formatting_status: Dict[str, Any]
+        validation_status: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Calculate overall processing progress"""
         try:
@@ -292,15 +282,13 @@ class DocumentProcessingOrchestrator:
             ingestion_pct = ingestion_status.get("upload_completion_percentage", 0)
             extraction_pct = extraction_status.get("extraction_completion_percentage", 0)
             validation_pct = validation_status.get("validation_completion_percentage", 0)
-            formatting_pct = formatting_status.get("formatting_completion_percentage", 0)
             
             # Calculate weighted overall progress
-            # Ingestion: 20%, Extraction: 30%, Validation: 30%, Formatting: 20%
+            # Ingestion: 25%, Extraction: 35%, Validation: 40%
             overall_pct = (
-                ingestion_pct * 0.2 + 
-                extraction_pct * 0.3 + 
-                validation_pct * 0.3 + 
-                formatting_pct * 0.2
+                ingestion_pct * 0.25 + 
+                extraction_pct * 0.35 + 
+                validation_pct * 0.40
             )
             
             # Determine current stage
@@ -310,8 +298,6 @@ class DocumentProcessingOrchestrator:
             if extraction_pct >= 100:
                 current_stage = "validation"
             if validation_pct >= 100:
-                current_stage = "formatting"
-            if formatting_pct >= 100:
                 current_stage = "completed"
             
             return {
@@ -320,8 +306,7 @@ class DocumentProcessingOrchestrator:
                 "stage_progress": {
                     "ingestion": ingestion_pct,
                     "extraction": extraction_pct,
-                    "validation": validation_pct,
-                    "formatting": formatting_pct
+                    "validation": validation_pct
                 }
             }
             
@@ -333,21 +318,10 @@ class DocumentProcessingOrchestrator:
                 "stage_progress": {
                     "ingestion": 0,
                     "extraction": 0,
-                    "validation": 0,
-                    "formatting": 0
+                    "validation": 0
                 }
             }
     
-    async def get_golden_data_summary(self, application_id: str) -> Dict[str, Any]:
-        """Get golden data summary for decision engine"""
-        try:
-            return await self.formatting_agent.get_golden_data_summary(application_id)
-        except Exception as e:
-            logger.error(f"Error getting golden data summary: {str(e)}")
-            return {
-                "application_id": application_id,
-                "error": str(e)
-            }
     
     async def get_field_status(self, application_id: str) -> Dict[str, Any]:
         """Get detailed field extraction and validation status"""
@@ -449,19 +423,16 @@ class DocumentProcessingOrchestrator:
                 if config.get('mandatory_for_applicant', False):
                     status = "uploaded" if doc_type in uploaded_types else "missing"
                     
-                    # Get missing fields for this document type
-                    missing_fields = []
-                    if status == "missing":
-                        # Get fields that this document type can provide
-                        field_mapping = config.get('field_mapping', {})
-                        missing_fields = list(field_mapping.keys())
+                    # Get fields that this document type can provide
+                    queries = config.get('field_extraction', {}).get('queries', [])
+                    available_fields = [query.get('alias') for query in queries if query.get('alias')]
                     
                     required_docs.append({
                         "document_type": doc_type,
                         "display_name": config.get('display_name', doc_type),
                         "status": status,
                         "uploaded_at": next((doc['uploaded_at'] for doc in uploaded_docs if doc['document_type'] == doc_type), None),
-                        "missing_fields": missing_fields,
+                        "available_fields": available_fields,
                         "description": config.get('description', ''),
                         "file_types": config.get('accepted_file_types', ['.pdf', '.jpg', '.png'])
                     })
@@ -500,16 +471,18 @@ class DocumentProcessingOrchestrator:
             document_types = doc_config.yaml_loader.get_document_types()
             
             for doc_type, config in document_types.items():
-                field_mapping = config.get('field_mapping', {})
-                for field_name in field_mapping.keys():
-                    all_possible_fields.add(field_name)
-                    if field_name not in field_to_documents:
-                        field_to_documents[field_name] = []
-                    field_to_documents[field_name].append({
-                        'document_type': doc_type,
-                        'display_name': config.get('display_name', doc_type),
-                        'priority': 'high' if config.get('mandatory_for_applicant', False) else 'medium'
-                    })
+                queries = config.get('field_extraction', {}).get('queries', [])
+                for query in queries:
+                    field_name = query.get('alias')
+                    if field_name:
+                        all_possible_fields.add(field_name)
+                        if field_name not in field_to_documents:
+                            field_to_documents[field_name] = []
+                        field_to_documents[field_name].append({
+                            'document_type': doc_type,
+                            'display_name': config.get('display_name', doc_type),
+                            'priority': 'high' if config.get('mandatory_for_applicant', False) else 'medium'
+                        })
             
             # Find missing fields
             extracted_fields = field_status.get('extracted_fields', {})

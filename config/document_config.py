@@ -23,9 +23,9 @@ class DocumentConfig:
         # Convert to the format expected by Textract
         textract_queries = []
         for query in queries:
-            if isinstance(query, dict) and "text" in query and "alias" in query:
+            if isinstance(query, dict) and "query" in query and "alias" in query:
                 textract_queries.append({
-                    "Text": query["text"],
+                    "Text": query["query"],
                     "Alias": query["alias"]
                 })
         return textract_queries
@@ -40,13 +40,14 @@ class DocumentConfig:
         pages = set()
         
         for query in queries:
-            if isinstance(query, str) and query.startswith("# PAGE"):
+            if isinstance(query, dict) and "page" in query:
                 try:
-                    page_part = query.split(":")[0].split()[-1]
-                    pages.add(int(page_part))
-                except (ValueError, IndexError):
+                    page_num = int(query["page"])
+                    pages.add(page_num)
+                except (ValueError, TypeError):
                     continue
         
+        # If no page numbers are specified, assume 1 page
         return len(pages) if pages else 1
     
     def get_field_mappings_for_document_type(self, document_type: str) -> Dict[str, str]:
@@ -58,6 +59,20 @@ class DocumentConfig:
             # The extraction agent expects: field_mappings[field_name] = alias
             field_mappings[query["alias"]] = query["alias"]
         return field_mappings
+    
+    def get_field_mapping_for_field(self, field_name: str) -> Dict[str, Any]:
+        """Get field mapping configuration for a specific field"""
+        return self.yaml_loader.get_field_mapping_for_field(field_name)
+    
+    def get_document_types_for_field(self, field_name: str) -> List[str]:
+        """Get list of document types that can provide a specific field"""
+        field_mapping = self.get_field_mapping_for_field(field_name)
+        return field_mapping.get("document_types", [])
+    
+    def get_validation_rules_for_field(self, field_name: str) -> Dict[str, Any]:
+        """Get validation rules for a specific field"""
+        field_mapping = self.get_field_mapping_for_field(field_name)
+        return field_mapping.get("validation_rules", {})
     
     def get_mandatory_documents_for_applicant(self, applicant_type: str = "applicant") -> List[str]:
         """Get list of mandatory document types for an applicant"""

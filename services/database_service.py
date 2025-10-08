@@ -4,7 +4,6 @@ Handles database operations using SQLAlchemy with PostgreSQL
 """
 
 import os
-import asyncio
 import json
 from typing import Dict, List, Any, Optional
 from sqlalchemy import create_engine, text
@@ -267,19 +266,6 @@ class DatabaseService:
         result = await self.execute_insert(query, params)
         return str(result)
     
-    async def get_golden_data(self, application_id: str) -> Optional[Dict[str, Any]]:
-        """Get golden data for an application"""
-        query = "SELECT * FROM golden_data WHERE application_id = :application_id ORDER BY created_at DESC LIMIT 1"
-        results = await self.execute_query(query, {"application_id": application_id})
-        if results and len(results) > 0:
-            result = results[0]
-            # Ensure we have a dictionary, not just an ID
-            if isinstance(result, dict):
-                return result
-            else:
-                logger.warning(f"get_golden_data returned non-dict result: {type(result)} - {result}")
-                return None
-        return None
     
     # Processing logs operations
     async def create_processing_log(self, log_data: Dict[str, Any]) -> str:
@@ -407,6 +393,104 @@ class DatabaseService:
         return {}
     
     
+    # Golden data operations
+    async def save_golden_data(self, application_id: str, validated_fields: dict, validation_stats: dict) -> bool:
+        """Save validated fields and statistics to existing golden_data table"""
+        try:
+            logger.info(f"=== SAVE GOLDEN DATA DEBUG ===")
+            logger.info(f"Application ID: {application_id}")
+            logger.info(f"Validated fields count: {len(validated_fields)}")
+            logger.info(f"Validation stats: {validation_stats}")
+            
+            # Calculate data quality score based on validation percentage
+            data_quality_score = validation_stats.get("validation_percentage", 0.0) / 100.0
+            
+            # First, try to update existing record
+            update_query = """
+            UPDATE golden_data 
+            SET golden_fields = :golden_fields,
+                field_count = :field_count,
+                verified_fields = :verified_fields,
+                high_confidence_fields = :high_confidence_fields,
+                data_quality_score = :data_quality_score,
+                ready_for_decision_engine = :ready_for_decision_engine,
+                validation_summary = :validation_summary,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE application_id = :application_id
+            """
+            
+            # If no rows updated, insert new record
+            insert_query = """
+            INSERT INTO golden_data (application_id, golden_fields, field_count, verified_fields, 
+                                   high_confidence_fields, data_quality_score, ready_for_decision_engine, 
+                                   validation_summary)
+            VALUES (:application_id, :golden_fields, :field_count, :verified_fields, 
+                   :high_confidence_fields, :data_quality_score, :ready_for_decision_engine, 
+                   :validation_summary)
+            """
+            
+            params = {
+                "application_id": application_id,
+                "golden_fields": json.dumps(validated_fields),
+                "field_count": validation_stats.get("total_fields", 0),
+                "verified_fields": validation_stats.get("validated_fields", 0),
+                "high_confidence_fields": validation_stats.get("validated_fields", 0),  # All validated fields are high confidence
+                "data_quality_score": data_quality_score,
+                "ready_for_decision_engine": validation_stats.get("validation_percentage", 0.0) >= 80.0,  # Ready if 80%+ validated
+                "validation_summary": json.dumps(validation_stats)
+            }
+            
+            logger.info(f"Query params: {params}")
+            
+            # Try to update first
+            update_result = await self.execute_update(update_query, params)
+            logger.info(f"Update result: {update_result}")
+            
+            if update_result and update_result > 0:
+                logger.info(f"Golden data updated successfully for application {application_id}")
+                return True
+            else:
+                # No existing record, insert new one
+                insert_result = await self.execute_insert(insert_query, params)
+                logger.info(f"Insert result: {insert_result}")
+                logger.info(f"Golden data inserted successfully for application {application_id}")
+                return True
+            
+        except Exception as e:
+            logger.error(f"Error saving golden data: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+    
+    async def get_golden_data(self, application_id: str) -> Optional[Dict[str, Any]]:
+        """Get golden data for an application"""
+        try:
+            query = """
+            SELECT id, application_id, golden_fields, field_count, verified_fields,
+                   high_confidence_fields, data_quality_score, ready_for_decision_engine,
+                   validation_summary, created_at, updated_at
+            FROM golden_data 
+            WHERE application_id = :application_id
+            """
+            
+            results = await self.execute_query(query, {"application_id": application_id})
+            if results:
+                result = results[0]
+                # Parse the JSON fields
+                if result.get('golden_fields'):
+                    if isinstance(result['golden_fields'], str):
+                        result['golden_fields'] = json.loads(result['golden_fields'])
+                if result.get('validation_summary'):
+                    if isinstance(result['validation_summary'], str):
+                        result['validation_summary'] = json.loads(result['validation_summary'])
+                return result
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting golden data: {str(e)}")
+            return None
+    
+
     async def close(self):
         """Close database connections"""
         await self.engine.dispose()

@@ -18,7 +18,7 @@ class DocumentJob(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     application_id = Column(String(255), ForeignKey("applications.application_id"), nullable=False, index=True)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=False, index=True)
-    job_type = Column(String(50), nullable=False)  # 'ingestion', 'extraction', 'validation', 'formatting'
+    job_type = Column(String(50), nullable=False)  # 'ingestion', 'extraction', 'validation'
     status = Column(String(20), default='pending', index=True)  # 'pending', 'processing', 'completed', 'failed'
     priority = Column(Integer, default=5)
     retry_count = Column(Integer, default=0)
@@ -96,7 +96,6 @@ class DocumentJob(Base):
             'ingestion': 'Document Ingestion',
             'extraction': 'Data Extraction',
             'validation': 'Data Validation',
-            'formatting': 'Data Formatting'
         }
         return type_map.get(self.job_type, self.job_type.title())
     

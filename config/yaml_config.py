@@ -4,7 +4,6 @@ Loads document processing configuration from YAML files
 """
 
 import yaml
-import os
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
@@ -14,8 +13,11 @@ class YAMLConfigLoader:
     def __init__(self, config_file: str = "documents.yaml"):
         self.config_file = config_file
         self.config_path = Path(__file__).parent / config_file
+        self.field_mapping_path = Path(__file__).parent / "field_mapping.yaml"
         self._config = None
+        self._field_mapping_config = None
         self._load_config()
+        self._load_field_mapping()
     
     def _load_config(self):
         """Load configuration from YAML file"""
@@ -27,21 +29,32 @@ class YAMLConfigLoader:
         except yaml.YAMLError as e:
             raise Exception(f"Error parsing YAML configuration: {str(e)}")
     
+    def _load_field_mapping(self):
+        """Load field mapping configuration from YAML file"""
+        try:
+            with open(self.field_mapping_path, 'r', encoding='utf-8') as file:
+                self._field_mapping_config = yaml.safe_load(file)
+        except FileNotFoundError:
+            # Field mapping is optional, set to empty dict if not found
+            self._field_mapping_config = {}
+        except yaml.YAMLError as e:
+            raise Exception(f"Error parsing field mapping configuration: {str(e)}")
+    
     def get_document_types(self) -> Dict[str, Dict[str, Any]]:
         """Get document types configuration"""
-        return self._config.get("document_types", {})
+        return self._config.get("documents", {})
     
     def get_field_extraction_config(self) -> Dict[str, List[Dict[str, Any]]]:
         """Get field extraction configuration"""
-        return self._config.get("field_extraction", {})
+        return self._config.get("documents", {})
     
     def get_field_mapping_config(self) -> Dict[str, Dict[str, Any]]:
         """Get field mapping configuration"""
-        return self._config.get("field_mapping", {})
+        return self._field_mapping_config.get("field_mapping", {})
     
     def get_validation_rules(self) -> Dict[str, Any]:
         """Get validation rules"""
-        return self._config.get("validation_rules", {})
+        return self._field_mapping_config.get("validation_rules", {})
     
     def get_processing_config(self) -> Dict[str, Any]:
         """Get processing configuration"""
@@ -54,9 +67,10 @@ class YAMLConfigLoader:
     
     def get_queries_for_document_type(self, document_type: str, page_number: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get Textract queries for a document type, optionally filtered by page"""
-        field_extraction = self.get_field_extraction_config()
-        document_config = field_extraction.get(document_type, {})
-        all_queries = document_config.get("queries", [])
+        documents = self.get_document_types()
+        document_config = documents.get(document_type, {})
+        field_extraction = document_config.get("field_extraction", {})
+        all_queries = field_extraction.get("queries", [])
         
         # Page-based processing is only supported for mortgage applications
         if page_number is None or document_type != "mortgage_application":

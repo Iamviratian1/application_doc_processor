@@ -7,16 +7,14 @@ A comprehensive four-agent document processing system for mortgage applications,
 - **Document Ingestion Agent**: File upload, validation, and storage
 - **Data Extraction Agent**: AWS Textract integration for intelligent field extraction
 - **Data Validation Agent**: Field comparison and validation against application data
-- **Data Formatting Agent**: Final data formatting and golden record creation
 
 ## 🏗️ Architecture
 
-The system uses a microservices architecture with four specialized agents:
+The system uses a microservices architecture with three specialized agents:
 
 1. **Document Ingestion Agent**: Handles file uploads, validation, and initial processing
 2. **Data Extraction Agent**: Uses AWS Textract to extract structured data from documents
 3. **Data Validation Agent**: Compares extracted data against application form data
-4. **Data Formatting Agent**: Creates final formatted records for decision-making
 
 ### System Architecture Diagram
 
@@ -35,7 +33,6 @@ graph TB
         DIA[Document Ingestion Agent<br/>• File validation<br/>• Document classification<br/>• Storage management]
         DEA[Data Extraction Agent<br/>• AWS Textract integration<br/>• Field extraction<br/>• Data parsing]
         DVA[Data Validation Agent<br/>• Field comparison<br/>• Data validation<br/>• Mismatch detection]
-        DFA[Data Formatting Agent<br/>• Golden record creation<br/>• Final formatting<br/>• Quality assurance]
     end
     
     %% Database
@@ -76,12 +73,9 @@ graph TB
     API --> DIA
     DIA --> DEA
     DEA --> DVA
-    DVA --> DFA
-    
     DIA --> DB
     DEA --> DB
     DVA --> DB
-    DFA --> DB
     
     DEA --> AWS
     DEA --> S3
@@ -107,7 +101,7 @@ graph TB
     classDef api fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
     classDef docs fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     
-    class DIA,DEA,DVA,DFA agent
+    class DIA,DEA,DVA agent
     class DB database
     class Client,AWS,S3 external
     class API,EP1,EP2,EP3,EP4,EP5,EP6 api
@@ -123,7 +117,6 @@ sequenceDiagram
     participant DIA as Document Ingestion Agent
     participant DEA as Data Extraction Agent
     participant DVA as Data Validation Agent
-    participant DFA as Data Formatting Agent
     participant DB as PostgreSQL
     participant AWS as AWS Textract
     
@@ -152,11 +145,8 @@ sequenceDiagram
     DVA->>DB: Store validation results
     DVA-->>API: Validation completed
     
-    API->>DFA: 5. Format final data
-    DFA->>DB: Get all processed data
-    DFA->>DFA: Create golden records
-    DFA->>DB: Store formatted data
-    DFA-->>API: Formatting completed
+    API->>DB: 5. Store validation results
+    API-->>Client: Processing completed
     
     API-->>Client: 6. Return processing status & results
 ```

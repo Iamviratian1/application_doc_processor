@@ -3,7 +3,6 @@ Document Ingestion Agent
 Handles document upload, validation, and initial processing setup
 """
 
-import os
 import uuid
 import mimetypes
 from typing import List, Dict, Any, Optional, Tuple

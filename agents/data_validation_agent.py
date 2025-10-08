@@ -135,16 +135,6 @@ class DataValidationAgent:
             }
             await self.db_service.create_validation_result(summary_result)
             
-            # Step 7: Create formatting job if validation is complete
-            if validation_summary["validation_completion_percentage"] >= 80:
-                job_data = {
-                    "application_id": application_id,
-                    "document_id": None,  # Application-level job
-                    "job_type": "formatting",
-                    "status": "pending",
-                    "priority": 2
-                }
-                await self.db_service.create_document_job(job_data)
             
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
             

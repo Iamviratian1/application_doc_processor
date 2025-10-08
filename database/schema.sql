@@ -2,11 +2,10 @@
 -- CLEAN DOCUMENT PROCESSOR DATABASE SCHEMA
 -- =====================================================
 -- 
--- This schema supports the four-agent document processing system:
+-- This schema supports the three-agent document processing system:
 -- 1. Document Ingestion Agent
 -- 2. Data Extraction Agent  
 -- 3. Data Validation Agent
--- 4. Data Formatting Agent
 --
 -- =====================================================
 
@@ -120,7 +119,7 @@ CREATE TABLE IF NOT EXISTS processing_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     application_id VARCHAR(255) NOT NULL REFERENCES applications(application_id),
     document_id UUID REFERENCES documents(id),
-    agent_name VARCHAR(50) NOT NULL, -- 'ingestion', 'extraction', 'validation', 'formatting'
+    agent_name VARCHAR(50) NOT NULL, -- 'ingestion', 'extraction', 'validation'
     step_name VARCHAR(100) NOT NULL,
     status VARCHAR(20) NOT NULL, -- 'started', 'completed', 'failed', 'skipped'
     message TEXT,
@@ -137,7 +136,7 @@ CREATE TABLE IF NOT EXISTS document_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     application_id VARCHAR(255) NOT NULL REFERENCES applications(application_id),
     document_id UUID REFERENCES documents(id),
-    job_type VARCHAR(50) NOT NULL, -- 'ingestion', 'extraction', 'validation', 'formatting'
+    job_type VARCHAR(50) NOT NULL, -- 'ingestion', 'extraction', 'validation'
     status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
     priority INTEGER DEFAULT 5,
     retry_count INTEGER DEFAULT 0,
